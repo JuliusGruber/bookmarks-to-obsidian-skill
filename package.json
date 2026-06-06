@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "description": "Import Chrome bookmarks into an Obsidian vault as clean, Web-Clipper-parity markdown notes.",
+  "license": "MIT",
+  "author": "Julius Gruber",
   "bin": {
     "bookmarks-to-obsidian": "./import.mjs"
   },
