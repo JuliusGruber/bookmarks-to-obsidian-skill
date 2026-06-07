@@ -6,16 +6,51 @@
 
 **Architecture:** Add three modules. `src/render.mjs` connects to Chrome over CDP (connect-only, no bundled browser), dismisses consent walls (EN+DE, precision-targeted), renders the page, **captures every `image/*` network response into a `Map<url, bytes>`**, and runs Defuddle's browser bundle in the live `document` to get cleaned HTML + rendered-DOM metadata. `src/shell.mjs` is a small keyword detector (EN+DE) that flags consent/paywall/JS-shell extractions. `src/images.mjs` takes the captured bytes (falling back to a node fetch, then to leaving the remote URL), filters tracking pixels, dedupes, and rewrites references to Obsidian embeds. `import.mjs` is rewired to a render → extract → **pick-the-better-vs-fetch** → harvest-images → write flow, falling back to today's `fetchPage` path whenever the render is missing, thin, or shell-flagged. The markdown converter is unchanged — `extractFromHtml` re-converts the in-page-cleaned HTML, and a committed equivalence test pins that this double-parse is byte-stable.
 
-**Tech Stack:** Node ESM, Defuddle 0.6.6 (`defuddle/node` for conversion, `dist/index.full.js` browser bundle injected in-page), `puppeteer-core` (CDP connect + response capture), `image-size` (tracking-pixel filter), vitest.
+**Tech Stack:** Node ESM, **Defuddle 0.18.1** (`defuddle/node` for node-side conversion — parses via **linkedom**, not jsdom; `dist/index.full.js` browser bundle injected in-page, which in 0.18.1 exposes both the `Defuddle` class **and** `createMarkdownContent`), `puppeteer-core` (CDP connect + response capture), `image-size` (tracking-pixel filter), vitest.
+
+---
+
+## Reconciliation 2026-06-07 — aligned to Defuddle 0.18.1
+
+This plan was authored against Defuddle 0.6.6. Since then the spec was revised into a
+three-rung staircase and **rung 1 (the 0.6.6 → 0.18.1 upgrade) shipped** (`package.json`
+now pins `defuddle ^0.18.1`; the unused `jsdom` dep was removed; 43 tests green). This
+plan is updated to match. **Do not re-introduce 0.6.6 or jsdom** — Task 0 below no longer
+does.
+
+Verified against the installed 0.18.1 build (so the render path still works as written):
+
+- The browser UMD bundle still exposes `window.Defuddle` as the **class**; `new
+  Defuddle(document, { url }).parse()` is unchanged, and `parseAsync()` also exists.
+- The bundle **also** exposes `window.Defuddle.createMarkdownContent` (0.6.6 did not), so
+  in-page markdown conversion is now possible. We still keep the node re-parse
+  (deviation #1) because it reuses the tested `extractFromHtml` and is **proven
+  byte-stable on 0.18.1** (re-parsing cleaned HTML == direct conversion, verified on the
+  article fixture).
+
+What the engine now does itself (this absorbs / obsoletes parts of the old plan):
+
+- **Shadow DOM** — `parse()` flattens shadow roots internally (`flattenShadowRoots` /
+  `replaceShadowHost`), and because we run Defuddle in the page's **main world** open
+  shadow roots are directly readable. Deviation #4's hand-rolled flatten is gone *and* no
+  `data-defuddle-shadow` stamp is needed — see the revised #4.
+- **URL absolutization + `<noscript>` images** — handled in-engine
+  (`resolveRelativeUrls` / `resolveContentUrls`, `_resolveNoscriptImages`) on **both** the
+  in-page and node paths. That is exactly spec **rung 2**, so no separate preprocessing
+  stage is needed; the only URL resolution left in this plan is `images.mjs`'s
+  `resolveUrl` (to match captured-byte keys), which stays.
+- Also new in 0.18.1: React streaming-SSR recovery (`resolveStreamedContent`), image
+  dedup / best-srcset (`_deduplicateImages`, `_pickBestImage`), and cover-image removal
+  (`_removeCoverImage`).
 
 ---
 
 ## Deviations from the approved spec (call out if you disagree)
 
-1. **Markdown path (unchanged from prior plan):** node conversion of in-page-cleaned HTML is the **primary** path, not a fallback. The installed Defuddle 0.6.6 browser bundle (`index.full.js`) exposes only the `Defuddle` class; re-feeding the cleaned `content` HTML through `extractFromHtml` reuses the existing, tested converter. The in-page `parse()` returns `content` as cleaned **HTML** (`DefuddleResponse.content`; markdown only when `markdown:true`), so the node re-parse converts it to markdown. A committed equivalence test (Task 3) guards the double-parse.
+1. **Markdown path (node re-parse, kept):** node conversion of in-page-cleaned HTML is the **primary** path, not a fallback. The in-page `parse()` returns `content` as cleaned **HTML** (`DefuddleResponse.content`); re-feeding it through `extractFromHtml` reuses the existing, tested converter and is **proven byte-stable on 0.18.1** (see the Reconciliation note). *Updated for 0.18.1:* the `index.full.js` bundle now **also** exposes `window.Defuddle.createMarkdownContent`, so converting in-page is an available alternative that would drop the double-parse entirely — we keep the node re-parse for now because it reuses tested code, but if a future Defuddle bump ever breaks the equivalence test, switch to the in-page converter rather than pinning back. A committed equivalence test (Task 3) guards the double-parse either way.
 2. **Image transport — now re-aligned with the spec's "browser-context first".** Images are **harvested from the render's own network responses** (the dedicated Chrome already fetched them, authenticated, defeating hotlink/cookie/CORS). A node fetch (`Referer` + Chrome UA) is the **fallback** for anything not captured (lazy images still in flight, `srcset` mismatches, redirects), and leaving the remote URL in place is the final tier. The prior plan's "node-fetch first" is demoted to tier 2.
 3. **Consent dismissal is ON by default** (deviation from the spec's "optional-off"). Flag is `--no-dismiss-consent` to opt out. Targeting is **precision-first** (curated exact EN+DE labels, visible, inside a consent context, click-once, known-CMP fast path) so it almost never misclicks — a missed banner just falls through the pick-the-better ladder.
-4. **Shadow-DOM flatten is DROPPED for v1** (deviation: the spec asked for it best-effort). The indiscriminate "flatten every shadow root" step duplicates slotted content, injects component scaffolding, and inflates `wordCount` in a way that poisons the consent/thin gates — negative expected value on this corpus. Re-add a scoped version later if a real bookmark hides its body in shadow DOM.
+4. **Shadow-DOM handling is now the engine's job (no manual step).** *Updated for 0.18.1:* Defuddle's `parse()` flattens shadow roots internally (`flattenShadowRoots` / `replaceShadowHost`, walking both trees in parallel for exact positional correspondence and avoiding the custom-element re-init trap). Because we run Defuddle in the page's **main world**, open shadow roots are directly accessible to it. So we add **neither** a hand-rolled flatten **nor** the extension's `data-defuddle-shadow` stamp — both are obsolete. (The old worry about an indiscriminate flatten inflating `wordCount` and poisoning the gates no longer applies: we don't do the flatten, the engine does, well.) Closed shadow roots stay unreachable — accepted, same as the extension.
 5. **New: render-vs-fetch "pick the better".** When a render is missing, below `--min-words`, or shell-flagged, the raw fetch is also run and the better extraction wins (shell-flagged candidates disqualified; longest non-shell wins; render breaks ties). Prevents a JS-injected consent/subscribe overlay from being saved as a successful `rendered` note.
 6. **New: `--dry-run` renders too** (capped to `--limit`; bare `--dry-run` caps at 10) so the preview reflects the real path and accurate statuses — but writes no notes and downloads no images.
 
@@ -50,13 +85,12 @@ The existing `src/extract.mjs`, `src/frontmatter.mjs`, `src/note.mjs`, `src/dedu
 
 - [ ] **Step 1: Add the two dependencies**
 
-Edit the `dependencies` block in `package.json` so it reads exactly:
+`defuddle` is already at `^0.18.1` and `jsdom` was already removed (spec rung 1, shipped 2026-06-07) — this step only **adds** `image-size` and `puppeteer-core`. Edit the `dependencies` block in `package.json` so it reads exactly:
 
 ```json
   "dependencies": {
-    "defuddle": "^0.6.0",
+    "defuddle": "^0.18.1",
     "image-size": "^2.0.0",
-    "jsdom": "^24.1.0",
     "puppeteer-core": "^23.0.0"
   },
 ```
@@ -566,8 +600,10 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-// Browser UMD bundle that defines window.Defuddle (the class). 0.6.6 does not
-// expose the markdown converter in this bundle — that is done in node.
+// Browser UMD bundle that defines window.Defuddle (the class) and, in 0.18.1, also
+// window.Defuddle.createMarkdownContent. We run parse() in-page (it flattens shadow
+// DOM, resolves <noscript>/lazy images, and absolutizes URLs internally) and convert
+// to markdown in node via extractFromHtml (proven byte-stable — see Task 3 Step 2).
 const DEFUDDLE_BUNDLE = join(HERE, '..', 'node_modules', 'defuddle', 'dist', 'index.full.js');
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // skip giant images; node-fetch/remote handles them
@@ -762,7 +798,7 @@ describe('rendered-path double-parse is byte-stable', () => {
 });
 ```
 
-> If this assertion does not hold on the installed Defuddle build, **stop**: the double-parse is not byte-stable for this version and the rendered-path markdown would silently diverge from the tested converter. Capture the actual diff, and either pin a working Defuddle version or switch the rendered path to the single-pass `defuddle/dist/markdown.js` converter before continuing.
+> Byte-stability was verified on Defuddle 0.18.1 against the article fixture during the 2026-06-07 reconciliation, so this should pass. If a future Defuddle bump ever breaks it, **stop**: capture the diff and switch the rendered path to the in-page converter (`window.Defuddle.createMarkdownContent(content, url)`, now exposed by the 0.18.1 bundle) rather than pinning back to an old version.
 
 - [ ] **Step 3: Write the opt-in smoke test**
 
@@ -1185,9 +1221,10 @@ Replace the Setup requirements paragraph (lines 16-19):
 ```markdown
 Requires Node 20+ and the local `chrome-bookmarks-gateway` running on
 `http://localhost:3000` (its dedicated Chrome, with CDP on `http://localhost:9222`,
-doubles as the rendering engine). Dependencies: `defuddle` + `jsdom` (extraction),
-`puppeteer-core` (CDP render + image capture, connect-only — no bundled browser),
-and `image-size` (tracking-pixel filtering). If `node_modules/` is missing (e.g.
+doubles as the rendering engine). Dependencies: `defuddle` (extraction; bundles
+`linkedom` for node-side parsing), `puppeteer-core` (CDP render + image capture,
+connect-only — no bundled browser), and `image-size` (tracking-pixel filtering).
+If `node_modules/` is missing (e.g.
 after copying the skill to a new machine), re-run `npm install` from this directory.
 ```
 
@@ -1257,6 +1294,6 @@ Expected: PASS, all suites (`render.smoke` skipped). No commit needed — verifi
 - **Image capture correctness:** `setCacheEnabled(false)` ensures real response bodies; the post-autoscroll settle waits for lazy-image responses before the tab closes, so below-the-fold images are captured rather than missed.
 - **Idempotency:** the manifest + vault scan still skip already-imported URLs before any render, so re-runs don't re-render or re-download. `--retry-failed` re-renders failed/thin entries.
 - **Known limitation (deferred):** the manifest is written once at the end of the run, so an interruption mid-backfill loses `failed`/`skipped-thin` provenance (imported notes survive via the vault scan and are not re-done). Manifest checkpointing is out of scope for v1.
-- **Dropped for v1 (deviations):** shadow-DOM flatten (negative expected value, poisons gates), and the captured `image`/og:image cover (spec says no frontmatter changes).
+- **Handled by the engine now (was a v1 deviation):** shadow-DOM flattening and `<noscript>`/URL resolution happen inside Defuddle 0.18.1's `parse()` — no manual step. The captured `image`/og:image cover is still intentionally not surfaced to frontmatter (and 0.18.1's `_removeCoverImage` strips the duplicate hero from the body for us).
 - **Double-parse guard:** `test/extract.equivalence.test.mjs` pins that re-parsing cleaned HTML equals direct conversion; if it ever fails on a Defuddle bump, the rendered path's markdown has diverged from the tested converter — fix before shipping.
 ```
