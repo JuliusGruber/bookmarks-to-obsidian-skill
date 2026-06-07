@@ -15,7 +15,9 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "defuddle": "^0.18.1"
+    "defuddle": "^0.18.1",
+    "image-size": "^2.0.0",
+    "puppeteer-core": "^23.0.0"
   },
   "devDependencies": {
     "vitest": "^2.1.0"
