@@ -235,12 +235,13 @@ async function main() {
         dismissConsent: opts.dismissConsent,
       });
       if (r.status === 'ok') {
-        const ex = await extractFromHtml(r.content, bm.url, { minWords: opts.minWords });
-        const md = ex.content || '';
+        // r.content is already markdown, converted in-page (preserves inline images
+        // that a node re-parse of the cleaned fragment would drop — see render.mjs).
+        const md = r.content || '';
         rendered = {
           markdown: md,
-          wordCount: ex.wordCount || 0,
-          meta: r,                 // rendered-DOM metadata (richer than the fragment re-parse)
+          wordCount: r.wordCount || 0,
+          meta: r,                 // rendered-DOM metadata
           images: r.images,        // Map<url,{bytes,contentType}> from the live page
           shell: looksLikeShell(md, { minWords: opts.minWords }),
         };

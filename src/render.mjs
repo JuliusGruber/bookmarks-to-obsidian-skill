@@ -2,18 +2,19 @@
 // the live document — the same thing the Obsidian Web Clipper does. Also harvests
 // every image/* network response the page loaded into a Map<url,{bytes,...}> so
 // the importer can reuse the authenticated bytes instead of re-fetching. Returns
-// the cleaned content HTML, rendered-DOM metadata, and that image map. Markdown
-// conversion happens in node afterwards via extractFromHtml. Never launches or
-// closes the browser (connect/disconnect only); only fresh tabs are opened/closed.
+// the cleaned content as MARKDOWN (converted in-page via Defuddle's markdown
+// option), rendered-DOM metadata, and that image map. We convert in-page rather
+// than re-parsing the cleaned HTML in node, because a second node extraction on a
+// context-free fragment drops div-wrapped inline images (x.com: 12 -> 1). Never
+// launches or closes the browser (connect/disconnect only); only fresh tabs open/close.
 import puppeteer from 'puppeteer-core';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-// Browser UMD bundle that defines window.Defuddle (the class) and, in 0.18.1, also
-// window.Defuddle.createMarkdownContent. We run parse() in-page (it flattens shadow
-// DOM, resolves <noscript>/lazy images, and absolutizes URLs internally) and convert
-// to markdown in node via extractFromHtml (proven byte-stable — see Task 3 Step 2).
+// Browser UMD bundle that defines window.Defuddle (the class). We run parse() in-page
+// with markdown:true — it flattens shadow DOM, resolves <noscript>/lazy images,
+// absolutizes URLs internally, and converts to markdown without losing inline images.
 const DEFUDDLE_BUNDLE = join(HERE, '..', 'node_modules', 'defuddle', 'dist', 'index.full.js');
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // skip giant images; node-fetch/remote handles them
@@ -109,8 +110,8 @@ async function settleImages(getLastAt, startedAt) {
 
 /**
  * Render `url`, capture its images, and extract via in-page Defuddle.
- * Returns { status:'ok', content, images: Map<url,{bytes,contentType}>, title,
- * author, published, description, image, site, domain, wordCount } or
+ * Returns { status:'ok', content (MARKDOWN), images: Map<url,{bytes,contentType}>,
+ * title, author, published, description, image, site, domain, wordCount } or
  * { status:'render-failed', reason, images }.
  */
 export async function renderPage(browser, url, { navTimeoutMs = 25000, dismissConsent = true } = {}) {
@@ -157,7 +158,11 @@ export async function renderPage(browser, url, { navTimeoutMs = 25000, dismissCo
     const result = await page.evaluate((pageUrl) => {
       const D = window.Defuddle;
       if (!D) return null;
-      const r = new D(document, { url: pageUrl }).parse();
+      // Convert to markdown IN-PAGE in the same parse. Re-parsing the cleaned HTML
+      // in node (defuddle/node) was lossy: a second extraction on a context-free
+      // fragment scores out div-wrapped inline images (x.com: 12 -> 1). The in-page
+      // parse has the full live document, so markdown:true preserves every image.
+      const r = new D(document, { url: pageUrl, markdown: true }).parse();
       return {
         content: r.content, title: r.title, author: r.author,
         published: r.published, description: r.description, image: r.image,
