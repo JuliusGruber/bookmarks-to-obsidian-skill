@@ -253,7 +253,7 @@ git commit -m "feat(shell): EN+DE consent/paywall/JS-shell detector"
 
 Acquisition is three-tier: **captured render bytes → node fetch → leave remote**. Naming is cross-run-safe (the caller seeds `takenNames` from the existing `_attachments/` listing, and passes the disambiguated note filename as the slug).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `test/images.test.mjs`:
 
@@ -392,12 +392,12 @@ describe('downloadImages', () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run test/images.test.mjs`
 Expected: FAIL — `Cannot find module '../src/images.mjs'`.
 
-- [ ] **Step 3: Implement `src/images.mjs`**
+- [x] **Step 3: Implement `src/images.mjs`**
 
 Create `src/images.mjs`:
 
@@ -562,12 +562,12 @@ export async function downloadImages(markdown, {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run test/images.test.mjs`
 Expected: PASS — all assertions green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/images.mjs test/images.test.mjs
