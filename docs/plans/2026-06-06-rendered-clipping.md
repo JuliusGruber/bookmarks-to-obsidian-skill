@@ -135,7 +135,7 @@ A small, pure, unit-tested predicate used by the pick-the-better step to disqual
 - Create: `src/shell.mjs`
 - Test: `test/shell.test.mjs`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `test/shell.test.mjs`:
 
@@ -176,12 +176,12 @@ describe('looksLikeShell', () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run test/shell.test.mjs`
 Expected: FAIL — `Cannot find module '../src/shell.mjs'`.
 
-- [ ] **Step 3: Implement `src/shell.mjs`**
+- [x] **Step 3: Implement `src/shell.mjs`**
 
 Create `src/shell.mjs`:
 
@@ -231,12 +231,12 @@ export function looksLikeShell(text, { minWords = 200 } = {}) {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run test/shell.test.mjs`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/shell.mjs test/shell.test.mjs
