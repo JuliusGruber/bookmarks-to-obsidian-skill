@@ -583,7 +583,7 @@ git commit -m "feat(images): captured-bytes-first download, cross-run-safe namin
 - Test: `test/render.smoke.test.mjs`
 - Test: `test/extract.equivalence.test.mjs`
 
-- [ ] **Step 1: Implement `src/render.mjs`**
+- [x] **Step 1: Implement `src/render.mjs`**
 
 Create `src/render.mjs`:
 
@@ -765,7 +765,7 @@ export async function renderPage(browser, url, { navTimeoutMs = 25000, dismissCo
 }
 ```
 
-- [ ] **Step 2: Write the equivalence test (guards the double-parse)**
+- [x] **Step 2: Write the equivalence test (guards the double-parse)**
 
 Create `test/extract.equivalence.test.mjs`. It pins that converting Defuddle's cleaned **HTML** to markdown via `extractFromHtml` equals converting the original document directly — i.e. the rendered path's node re-parse is byte-stable against the converter the fallback uses.
 
@@ -800,7 +800,7 @@ describe('rendered-path double-parse is byte-stable', () => {
 
 > Byte-stability was verified on Defuddle 0.18.1 against the article fixture during the 2026-06-07 reconciliation, so this should pass. If a future Defuddle bump ever breaks it, **stop**: capture the diff and switch the rendered path to the in-page converter (`window.Defuddle.createMarkdownContent(content, url)`, now exposed by the 0.18.1 bundle) rather than pinning back to an old version.
 
-- [ ] **Step 3: Write the opt-in smoke test**
+- [x] **Step 3: Write the opt-in smoke test**
 
 Create `test/render.smoke.test.mjs`. Skipped unless `RENDER_SMOKE=1` AND the gateway Chrome is up — proves the full live path end-to-end without hitting the network (a `data:` page).
 
@@ -830,17 +830,17 @@ d('renderPage (live CDP smoke)', () => {
 });
 ```
 
-- [ ] **Step 4: Verify the suite is green and the smoke test is skipped by default**
+- [x] **Step 4: Verify the suite is green and the smoke test is skipped by default**
 
 Run: `npx vitest run`
 Expected: PASS, including `extract.equivalence`; `render.smoke` reported as skipped (no `RENDER_SMOKE`).
 
-- [ ] **Step 5 (optional, requires the gateway up): run the live smoke**
+- [ ] **Step 5 (optional, requires the gateway up): run the live smoke** — _not run: gateway Chrome was down (:9222 refused); run before Task 4._
 
 Run (PowerShell): `$env:RENDER_SMOKE=1; npx vitest run test/render.smoke.test.mjs; Remove-Item Env:RENDER_SMOKE`
 Expected: PASS. If it errors with a connection failure, start the gateway (`C:\Users\juliu\cbg-up.ps1`) and retry. Recommended before wiring Task 4.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/render.mjs test/render.smoke.test.mjs test/extract.equivalence.test.mjs
