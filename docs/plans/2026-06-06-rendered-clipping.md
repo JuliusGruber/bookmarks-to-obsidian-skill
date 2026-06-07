@@ -856,7 +856,7 @@ Rewires the per-bookmark core: render → pick-the-better-vs-fetch → harvest i
 **Files:**
 - Modify: `import.mjs`
 
-- [ ] **Step 1: Add the new imports**
+- [x] **Step 1: Add the new imports**
 
 Below `import { buildReport } from './src/report.mjs';` (line 25), add:
 
@@ -866,7 +866,7 @@ import { downloadImages } from './src/images.mjs';
 import { looksLikeShell } from './src/shell.mjs';
 ```
 
-- [ ] **Step 2: Add the new option defaults**
+- [x] **Step 2: Add the new option defaults**
 
 In `parseArgs`, extend the `opts` literal (after `concurrency: 4,`):
 
@@ -877,7 +877,7 @@ In `parseArgs`, extend the `opts` literal (after `concurrency: 4,`):
     dismissConsent: true,
 ```
 
-- [ ] **Step 3: Add the new flag cases**
+- [x] **Step 3: Add the new flag cases**
 
 In the `switch (a)` of `parseArgs`, before `case '-h':`:
 
@@ -888,7 +888,7 @@ In the `switch (a)` of `parseArgs`, before `case '-h':`:
       case '--no-dismiss-consent': opts.dismissConsent = false; break;
 ```
 
-- [ ] **Step 4: Document the flags in the HELP string**
+- [x] **Step 4: Document the flags in the HELP string**
 
 In `HELP`, inside `Options:` (after the `--concurrency` line):
 
@@ -899,7 +899,7 @@ In `HELP`, inside `Options:` (after the `--concurrency` line):
   --no-dismiss-consent   Do not auto-click cookie/consent accept buttons (default: on).
 ```
 
-- [ ] **Step 5: Compute attachments dir, apply the dry-run render cap, connect the browser, seed attachment names**
+- [x] **Step 5: Compute attachments dir, apply the dry-run render cap, connect the browser, seed attachment names**
 
 In `main`, just after `const inboxAbs = join(vaultAbs, opts.inbox);` (line 120), add:
 
@@ -943,7 +943,7 @@ After the `await mkdir(inboxAbs, …)` guard — and noting dry-run now DOES ren
 
 > Note: the `await mkdir(inboxAbs, …)` guard currently requires `!opts.dryRun`. Leave that as-is (dry-run writes nothing) — rendering does not need the inbox dir.
 
-- [ ] **Step 6: Replace the per-bookmark worker body**
+- [x] **Step 6: Replace the per-bookmark worker body**
 
 Replace the entire `await mapPool(within, opts.concurrency, async ({ bm, norm, slot }) => { … });` block (lines 188-236) with the version below. It renders, decides whether the render is good, otherwise also fetches and picks the better, harvests captured images, and records the path taken.
 
@@ -1084,7 +1084,7 @@ Replace the entire `await mapPool(within, opts.concurrency, async ({ bm, norm, s
   });
 ```
 
-- [ ] **Step 7: Disconnect the browser after the pool finishes**
+- [x] **Step 7: Disconnect the browser after the pool finishes**
 
 Immediately after the `await mapPool(...)` call, add:
 
@@ -1094,7 +1094,7 @@ Immediately after the `await mapPool(...)` call, add:
 
 `disconnect()` (never `close()`) leaves the gateway's Chrome running.
 
-- [ ] **Step 8: Add a render/image summary to the report meta**
+- [x] **Step 8: Add a render/image summary to the report meta**
 
 In the `report.meta = { … }` object, after `retryFailed: opts.retryFailed,`:
 
@@ -1108,17 +1108,17 @@ In the `report.meta = { … }` object, after `retryFailed: opts.retryFailed,`:
     },
 ```
 
-- [ ] **Step 9: Run the full test suite (must stay green)**
+- [x] **Step 9: Run the full test suite (must stay green)**
 
 Run: `npx vitest run`
 Expected: PASS — existing `extract`, `frontmatter`, `gateway`, `note`, `report`, `url` tests plus new `shell`, `images`, `extract.equivalence`; `render.smoke` skipped.
 
-- [ ] **Step 10: Syntax/smoke-check the CLI help**
+- [x] **Step 10: Syntax/smoke-check the CLI help**
 
 Run: `node import.mjs --help`
 Expected: prints help including the four new flags (`--no-render`, `--cdp-url`, `--render-concurrency`, `--no-dismiss-consent`); exits 0.
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add import.mjs
