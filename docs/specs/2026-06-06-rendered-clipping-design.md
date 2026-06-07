@@ -2,7 +2,45 @@
 
 - **Date:** 2026-06-06
 - **Skill:** `bookmarks-to-obsidian` (`C:\Users\juliu\.claude\skills\bookmarks-to-obsidian`)
-- **Status:** design approved, pending implementation plan
+- **Status:** design approved; **revised 2026-06-07** (see revision note) — rung 1
+  shipped, rungs 2–3 pending implementation plan
+
+## Revision 2026-06-07 — three-rung staircase
+
+This design was written assuming the CDP render was the *only* lever. A source-level
+reverse-engineering of the actual Obsidian Web Clipper (`obsidianmd/obsidian-clipper`)
+and its engine (`kepano/defuddle`) found two cheaper rungs that come first, and
+corrected two claims in "Root cause" below.
+
+**The staircase (do in order; each is independently shippable):**
+
+1. **Rung 1 — upgrade Defuddle 0.6.6 → 0.18.1. ✅ DONE (2026-06-07).** The project
+   pinned `defuddle ^0.6.0` (resolved 0.6.6); the extension ships `^0.18.1`. Twelve
+   minor versions of extraction fixes were missing, including:
+   - `<noscript>` real-image recovery — 0.6.x deleted `<noscript>` outright, throwing
+     away images many sites hide there. A concrete, render-independent cause of the
+     "images lost" complaint.
+   - shadow-DOM consumption via `data-defuddle-shadow` (lets rung 3 stamp shadow
+     roots the way the extension does, instead of hand-rolling a flatten/merge).
+   - a 0.6.6 bug where `removeHiddenElements` built its removal list but never removed.
+   - the current rule set behind `createMarkdownContent`.
+
+   The bump is **drop-in**: `extract.mjs`'s `Defuddle(html, url, { markdown: true })`
+   call is unchanged. 0.18.1 dropped the jsdom peer dep and parses via **linkedom**,
+   so the now-unused direct `jsdom` dependency was removed. All 43 unit tests stay
+   green; this rung needs no rendered DOM.
+
+2. **Rung 2 — environment-independent preprocessing (not yet built).** Pure
+   DOM/string work that helps *every* page with no browser:
+   - **Absolutize** `src`/`href`/`srcset` against the page URL. Defuddle rewrites
+     attribute strings and does **not** absolutize in any environment, so relative
+     image/link URLs survive into the note. A real, cheap bug.
+   - Belt-and-suspenders lazy/`<noscript>` promotion for anything that slips past the
+     engine. Lands as a small step around `extract.mjs`; also feeds rung 3.
+
+3. **Rung 3 — CDP render (the rest of this document).** Only the residual hard cases
+   need a live browser: SPA/hydrated bodies, JS-*swapped* image `src`, visually-hidden
+   duplicate pull-quotes, runtime-rendered math/highlighting.
 
 ## Problem
 
@@ -20,34 +58,45 @@ Titles and frontmatter are *not* a complaint and are out of scope for changes.
 
 ## Root cause (verified)
 
-The current pipeline is `fetch()` raw server HTML → `Defuddle` (node build, jsdom)
-→ markdown. The Obsidian Web Clipper instead runs Defuddle against the **live,
+The current pipeline is `fetch()` raw server HTML → `Defuddle` (node build, linkedom
+since rung 1) → markdown. The Obsidian Web Clipper instead runs Defuddle against the **live,
 rendered, post-JavaScript `document`** in the user's browser. All three complaints
 trace to that single difference:
 
 - **Body** — A raw `fetch()` returns only the initial server HTML: SPA shells,
   JS-injected content, and consent/login-gated articles come back empty or
   stubbed. Defuddle cannot extract content that is not in the DOM.
-- **Images** — Lazy-loaded *real* image URLs are injected at runtime; on a raw
-  fetch only the base64/placeholder `src` is present, which Defuddle then **drops
-  as unresolvable**, losing the image entirely. Tracking-pixel and duplicate-image
-  removal relies on `getComputedStyle` / `getBoundingClientRect`, which are
-  **no-ops under jsdom** (Defuddle gates that path on `isBrowser`), so junk leaks.
+- **Images** — Two distinct mechanisms, only one of which needs a render.
+  *(Corrected 2026-06-07.)* (a) Lazy/`srcset`/`data-src` recovery is pure
+  attribute-string work and runs **identically** under linkedom — it is *not* a
+  source of loss. What is lost without a render is narrower: image `src`s that JS
+  **swaps in** at runtime, and (on 0.6.x only, now fixed by rung 1) real images
+  hidden in `<noscript>`. (b) Tracking-pixel / small-image *removal* relies on
+  `getBoundingClientRect`, which is all-zeros without a layout engine — so under a
+  headless DOM that path drops *fewer* images (junk pixels leak, but real images are
+  not mis-dropped). Separately, Defuddle never **absolutizes** URLs in any
+  environment (rung 2).
 - **Formatting** — The duplicated pull-quote is a *visually hidden* duplicate the
-  browser would strip via layout measurement; jsdom can't measure, so it survives.
+  browser would strip via layout measurement; a headless DOM can't measure, so it survives.
   Same mechanism. Runtime code highlighting and KaTeX/MathJax math exist only in
   the rendered DOM.
 
 Confirmed, so we don't waste effort fixing the wrong thing:
 
-- **The markdown converter is already at parity.** The skill imports
-  `defuddle/node` with `markdown: true`; that build runs the *exact same*
-  `createMarkdownContent` (Turndown + all custom rules: tables, code-fence
-  language, callouts, footnotes, embeds, math) the extension uses. No rule changes
-  are needed — the rules just need a *rendered* DOM as input.
-- **The node build does not execute scripts.** `defuddle/node` parses with jsdom
-  using `resources: 'usable'` but with `runScripts` disabled, so there is no JS
-  execution and no layout engine. This is structural, not a config tweak.
+- **The markdown converter shares the extension's code path — but was 12 versions
+  stale.** *(Corrected 2026-06-07.)* The skill imports `defuddle/node` with
+  `markdown: true`; that build runs the same `createMarkdownContent` (Turndown +
+  custom rules: tables, code-fence language, callouts, footnotes, embeds, math) the
+  extension uses — but it was running on **defuddle 0.6.6**, while the extension ships
+  **0.18.1**. "Parity" was only true of the *invocation path*, not the rule set. Rung
+  1 upgraded it. The converter is environment-independent (pure DOM/string work,
+  identical in the browser and node builds), so it produces identical markdown given
+  the same input HTML — the rules just need a *rendered* DOM as input (rung 3).
+- **The node build does not execute scripts.** `defuddle/node` parses the raw HTML
+  string with **linkedom** (0.18.1; was jsdom on 0.6.x) — no JS execution and no
+  layout engine. This is structural, not a config tweak. (Passing an HTML string is
+  now a *deprecated* input that will be removed in a future major; rung 3 should hand
+  Defuddle a real rendered `Document` instead.)
 - **The Clipper does not download images** — it keeps cleaned remote absolute
   URLs. Local download (below) is a deliberate step *beyond* the Clipper, chosen by
   the user.
@@ -76,6 +125,10 @@ Confirmed, so we don't waste effort fixing the wrong thing:
   continues to file notes into `Articles/<category>/` manually.
 
 ## Approach
+
+Rungs 1–2 (see the revision note above) handle the cheap, render-independent wins.
+This section specifies **rung 3** — the residual hard cases that genuinely need a
+live browser.
 
 **Add a CDP-render stage to the existing CLI** (chosen over a two-stage
 render-cache or a Playwright rewrite — both add complexity the task doesn't need).
@@ -111,20 +164,21 @@ bookmark.url
 
 ### Markdown conversion (parity preserved)
 
-In-page Defuddle does the parse/clean (this is where layout-based cleanup happens:
-tracking-pixel removal, hidden duplicate pull-quotes gone, lazy/srcset real URLs
-resolved). Markdown is then produced by the **same `createMarkdownContent`** the
-skill already ships:
+In-page Defuddle does the parse/clean against the live DOM (this is where the
+layout-based cleanup the headless path can't do happens: tracking-pixel removal,
+visually-hidden duplicate pull-quotes gone). It returns **clean HTML**, not markdown.
+*(Corrected 2026-06-07: the extension itself does not convert in-page either — it
+runs Defuddle for HTML, then calls `createMarkdownContent` separately.)* We do the
+same:
 
-- **Primary:** inject the Defuddle *full browser bundle* and produce markdown
-  in-page (exactly what the extension does).
-- **Fallback:** if that bundle does not expose the converter, run
-  `Defuddle(cleanedHtml, url, { markdown: true })` in node on the
-  **already-cleaned** HTML — same Turndown rules, and the layout-based removals
-  have already been applied in-page, so jsdom's missing measurement no longer
-  matters.
-
-The implementation plan picks one as default and keeps the other as a safety net.
+- **Default:** run `Defuddle(renderedCleanHtml, url, { markdown: true })` in node on
+  the HTML Defuddle extracted from the *rendered* DOM. The converter is
+  **environment-independent** — pure DOM/string work, shipped identically in the
+  browser and node builds — so this is byte-identical to converting in-page, without
+  the complexity of injecting a converter bundle into the page.
+- **No bundle injection.** The earlier draft's "inject the full browser bundle to
+  make markdown in-page" path rested on a wrong assumption about how the extension
+  works; it is dropped.
 
 ### Image pipeline (decided defaults)
 
@@ -152,8 +206,11 @@ The implementation plan picks one as default and keeps the other as a safety net
 - Viewport ~1280×800, navigate with `waitUntil: networkidle` and a bounded timeout
   (~20s) plus a short settle; **auto-scroll to bottom then top** to trigger lazy
   loaders before extraction.
-- Replicate the extension's **shadow-DOM flatten** before parse (small inlined
-  helper) so web-component content is captured.
+- Replicate the extension's **shadow-DOM stamp** before parse: inject the MAIN-world
+  one-liner that copies each `shadowRoot.innerHTML` into a `data-defuddle-shadow`
+  attribute. Defuddle 0.18.1 consumes that attribute natively (rung 1), so no
+  hand-rolled flatten/merge is needed — just the stamp. Hand Defuddle the rendered
+  `Document` (0.18.1 accepts a `Document` directly; HTML-string input is deprecated).
 - **Tab hygiene:** one fresh tab per render, always closed (even on error); never
   touch existing tabs or bookmarks, so the gateway's bookmark sync is undisturbed.
 - **Render concurrency** default **3** (one Chrome; keep it gentle). This is
@@ -207,8 +264,9 @@ re-renders and re-downloads, as today.
 
 ## Risks & open questions (resolve in the plan)
 
-- **Browser full bundle exposing `createMarkdownContent`** — mitigated by the node
-  conversion fallback on already-cleaned HTML.
+- ~~**Browser full bundle exposing `createMarkdownContent`**~~ — *resolved
+  2026-06-07:* node conversion on the rendered+cleaned HTML is byte-identical (the
+  converter is environment-independent), so no in-page bundle is used. Out of scope.
 - **CDP client library choice** (`playwright-core` vs `puppeteer-core`) — decide in
   the plan; requirement is connect-only, no bundled browser.
 - **Driving the gateway Chrome during bookmark sync** — mitigated by new-tabs-only,
