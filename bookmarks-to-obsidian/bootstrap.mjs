@@ -13,7 +13,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { findChromePath, chromeArgs } from './src/bootstrap/chrome.mjs';
-import { dockerRunArgs, isDaemonUp } from './src/bootstrap/docker.mjs';
+import { dockerRunArgs, isDaemonUp, resolveHostIp } from './src/bootstrap/docker.mjs';
 import { probeUrl } from './src/bootstrap/probe.mjs';
 import { interpretSyncz } from './src/bootstrap/syncz.mjs';
 import { resolveConfigDir, configPath, readConfig } from './src/bootstrap/config.mjs';
@@ -108,9 +108,21 @@ async function main() {
     proxy = 'started';
   }
 
-  // 5. Gateway container: remove any existing `cbg`, then run fresh.
+  // 5. Resolve the host IP the container uses to reach this host, then run the
+  //    gateway. CHROME_CDP_URL must be an IP literal, not a hostname: Chrome's
+  //    remote-debugging endpoint rejects a non-IP/non-localhost Host header and
+  //    the raw-forwarding proxy preserves it verbatim. resolveHostIp probes the
+  //    container's /etc/hosts portably (Docker Desktop -> 192.168.65.254;
+  //    native Linux -> the host-gateway IP).
+  const hostIp = resolveHostIp();
+  if (!hostIp) {
+    emit({ status: 'down', chrome, proxy, container: 'failed', syncz: null, error: 'could not resolve host IP for CDP (docker probe failed)' });
+    return;
+  }
+
+  // Gateway container: remove any existing `cbg`, then run fresh.
   spawnSync('docker', ['rm', '-f', 'cbg'], { stdio: 'ignore' });
-  const run = spawnSync('docker', dockerRunArgs(), { stdio: 'ignore' });
+  const run = spawnSync('docker', dockerRunArgs({ hostCdpUrl: `http://${hostIp}:9223` }), { stdio: 'ignore' });
   const container = run.status === 0 ? 'started' : 'failed';
   if (container === 'failed') {
     emit({ status: 'down', chrome, proxy, container, syncz: null });
