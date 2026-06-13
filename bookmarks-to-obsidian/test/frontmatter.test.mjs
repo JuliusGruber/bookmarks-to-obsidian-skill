@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { splitAuthors, normalizeDate, buildFrontmatter } from '../src/frontmatter.mjs';
+import { splitAuthors, normalizeDate, buildFrontmatter } from '../scripts/src/frontmatter.mjs';
 
 describe('splitAuthors', () => {
   it('returns a single author unchanged', () => {

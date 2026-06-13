@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeUrl } from '../src/dedup.mjs';
+import { normalizeUrl } from '../scripts/src/dedup.mjs';
 
 describe('normalizeUrl', () => {
   it('lowercases the host but preserves path case', () => {

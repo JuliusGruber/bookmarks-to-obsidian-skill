@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { connectBrowser, renderPage } from '../src/render.mjs';
+import { connectBrowser, renderPage } from '../scripts/src/render.mjs';
 
 const RUN = process.env.RENDER_SMOKE === '1';
 const d = RUN ? describe : describe.skip;

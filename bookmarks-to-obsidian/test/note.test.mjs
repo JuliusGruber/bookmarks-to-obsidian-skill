@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sanitizeFilename, uniqueFilename } from '../src/note.mjs';
+import { sanitizeFilename, uniqueFilename } from '../scripts/src/note.mjs';
 
 describe('sanitizeFilename', () => {
   it('replaces Windows-illegal characters and collapses whitespace', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { GATEWAY_IMAGE, dockerRunArgs, parseHostIp } from '../src/bootstrap/docker.mjs';
+import { GATEWAY_IMAGE, dockerRunArgs, parseHostIp } from '../scripts/src/bootstrap/docker.mjs';
 
 describe('GATEWAY_IMAGE', () => {
   it('is the pinned 0.3.0 image', () => {

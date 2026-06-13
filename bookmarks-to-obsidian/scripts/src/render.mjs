@@ -15,7 +15,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 // Browser UMD bundle that defines window.Defuddle (the class). We run parse() in-page
 // with markdown:true — it flattens shadow DOM, resolves <noscript>/lazy images,
 // absolutizes URLs internally, and converts to markdown without losing inline images.
-const DEFUDDLE_BUNDLE = join(HERE, '..', 'node_modules', 'defuddle', 'dist', 'index.full.js');
+const DEFUDDLE_BUNDLE = join(HERE, '..', '..', 'node_modules', 'defuddle', 'dist', 'index.full.js');
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // skip giant images; node-fetch/remote handles them
 

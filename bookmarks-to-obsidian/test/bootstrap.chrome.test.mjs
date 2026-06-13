@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { chromeCandidates, findChromePath, chromeArgs } from '../src/bootstrap/chrome.mjs';
+import { chromeCandidates, findChromePath, chromeArgs } from '../scripts/src/bootstrap/chrome.mjs';
 
 describe('chromeCandidates', () => {
   it('uses Program Files locations on win32', () => {

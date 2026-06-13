@@ -48,9 +48,9 @@ skill (`%APPDATA%\bookmarks-to-obsidian\` on Windows; `$XDG_CONFIG_HOME` or
 `~/.config/bookmarks-to-obsidian/` on macOS/Linux), so re-copying the skill never
 wipes them. Read/write it via the bundled CLI, run from the skill folder:
 
-- `node src/bootstrap/config.mjs --get` — print the full config.
-- `node src/bootstrap/config.mjs --set vault=<path>` — set the vault.
-- `node src/bootstrap/config.mjs --consent` — record consent (stamps `consentedAt`).
+- `node scripts/src/bootstrap/config.mjs --get` — print the full config.
+- `node scripts/src/bootstrap/config.mjs --set vault=<path>` — set the vault.
+- `node scripts/src/bootstrap/config.mjs --consent` — record consent (stamps `consentedAt`).
 
 Fields: `vault` (Obsidian vault root), `folder` (default `Mobile Lesezeichen/AI`),
 `inbox` (default `Clippings`), `consentedAt`.
@@ -58,8 +58,8 @@ Fields: `vault` (Obsidian vault root), `folder` (default `Mobile Lesezeichen/AI`
 **First use:** if `vault` is unset, ask the user for their Obsidian vault path and
 validate it — the directory **must exist** (reject and re-ask if not); a missing
 `.obsidian/` folder is a soft warning that does not block. On success,
-`--set vault=<path>`. Tool paths are skill-relative: invoke `node import.mjs` and
-`node bootstrap.mjs` from the skill's own folder — never a hardcoded absolute path.
+`--set vault=<path>`. Tool paths are skill-relative: invoke `node scripts/import.mjs` and
+`node scripts/bootstrap.mjs` from the skill's own folder — never a hardcoded absolute path.
 
 ## Rendering & images
 
@@ -92,12 +92,12 @@ validate it — the directory **must exist** (reject and re-ask if not); a missi
    - Health check: `curl -sS http://localhost:3000/syncz` → expect `{"ok":true}`.
    - **If it answers `{"ok":true}`** → the stack is up; go to step 2.
    - **If it is unreachable or returns `503`** → bring the stack up:
-     1. **Consent.** Read `node src/bootstrap/config.mjs --get`. If `consentedAt`
+     1. **Consent.** Read `node scripts/src/bootstrap/config.mjs --get`. If `consentedAt`
         is absent, explain once — bootstrap will *launch a dedicated Chrome,
         start a local CDP proxy, and run a Docker container, binding ports
         3000 / 9222 / 9223* — and ask permission. On **yes**:
-        `node src/bootstrap/config.mjs --consent`. On no, stop.
-     2. **Bootstrap:** `node bootstrap.mjs`. It prints one JSON object; parse its
+        `node scripts/src/bootstrap/config.mjs --consent`. On no, stop.
+     2. **Bootstrap:** `node scripts/bootstrap.mjs`. It prints one JSON object; parse its
         `status` and branch:
         - `needs-consent` → consent was not recorded; do the consent step, retry.
         - `docker-unavailable` → tell the user to install/start Docker Desktop; stop.
@@ -111,11 +111,11 @@ validate it — the directory **must exist** (reject and re-ask if not); a missi
 2. **First run / when unsure → dry-run first** so the user can eyeball quality.
    Read `vault`/`folder` from config (`--get`) and pass them as flags:
    ```
-   node import.mjs --vault "<config.vault>" --folder "<config.folder, default Mobile Lesezeichen/AI>" --dry-run --limit 10
+   node scripts/import.mjs --vault "<config.vault>" --folder "<config.folder, default Mobile Lesezeichen/AI>" --dry-run --limit 10
    ```
 3. **Real import** (writes notes) — drop `--dry-run`; omit `--limit` for the full backfill:
    ```
-   node import.mjs --vault "<config.vault>" --folder "<config.folder>"
+   node scripts/import.mjs --vault "<config.vault>" --folder "<config.folder>"
    ```
 4. **Parse** the JSON report on stdout and **summarize** in prose: imported N →
    inbox, plus skipped/failed counts. List the `skipped-thin` and `failed` items
@@ -149,7 +149,7 @@ downloaded vs. left remote — surface this in your summary (e.g. "42 imported
 
 ## Common mistakes
 
-- Running with the gateway down → the CLI exits 2 with `{"error":"gateway-unreachable"|"gateway-not-synced"}`. Bring the stack up first via Workflow step 1 (`node bootstrap.mjs`); don't fabricate results.
+- Running with the gateway down → the CLI exits 2 with `{"error":"gateway-unreachable"|"gateway-not-synced"}`. Bring the stack up first via Workflow step 1 (`node scripts/bootstrap.mjs`); don't fabricate results.
 - A bare `--folder "AI"` is **ambiguous** (an AI folder exists on the bar *and* under Mobile bookmarks) — the CLI errors with both paths. Use the full path `Mobile Lesezeichen/AI`.
 - A real import mutates the vault. For an unfamiliar vault state, dry-run first (step 2) before writing.
 - Transient `failed` (e.g. HTTP 429) is normal for rate-limited hosts; re-run later with `--retry-failed`.

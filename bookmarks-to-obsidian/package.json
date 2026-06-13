@@ -7,10 +7,10 @@
   "license": "MIT",
   "author": "Julius Gruber",
   "bin": {
-    "bookmarks-to-obsidian": "./import.mjs"
+    "bookmarks-to-obsidian": "./scripts/import.mjs"
   },
   "scripts": {
-    "import": "node import.mjs",
+    "import": "node scripts/import.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },

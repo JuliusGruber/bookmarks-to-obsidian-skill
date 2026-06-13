@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { resolveConfigDir, configPath, readConfig, writeConfig } from '../src/bootstrap/config.mjs';
+import { resolveConfigDir, configPath, readConfig, writeConfig } from '../scripts/src/bootstrap/config.mjs';
 
 describe('resolveConfigDir', () => {
   it('uses %APPDATA% on win32', () => {

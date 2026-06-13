@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { interpretSyncz } from '../src/bootstrap/syncz.mjs';
+import { interpretSyncz } from '../scripts/src/bootstrap/syncz.mjs';
 
 describe('interpretSyncz', () => {
   it('maps 200 to ready', () => {

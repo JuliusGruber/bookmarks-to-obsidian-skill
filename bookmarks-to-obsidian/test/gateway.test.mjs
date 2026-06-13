@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findFolder, collectBookmarks } from '../src/gateway.mjs';
+import { findFolder, collectBookmarks } from '../scripts/src/gateway.mjs';
 
 // Mirrors the real getTree shape: a single root whose children are the
 // top-level folders. Two "AI" folders exist (one on the bar, one under

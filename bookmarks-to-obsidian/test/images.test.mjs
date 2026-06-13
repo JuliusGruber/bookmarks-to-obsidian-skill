@@ -9,7 +9,7 @@ import {
   attachmentBase,
   uniqueAttachmentName,
   downloadImages,
-} from '../src/images.mjs';
+} from '../scripts/src/images.mjs';
 
 // Build a minimal valid PNG header that image-size can read (w x h).
 function fakePng(w, h) {

@@ -1,6 +1,6 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import { createServer } from 'node:http';
-import { probeUrl } from '../src/bootstrap/probe.mjs';
+import { probeUrl } from '../scripts/src/bootstrap/probe.mjs';
 
 const server = createServer((_req, res) => {
   res.writeHead(200, { 'content-type': 'application/json' });

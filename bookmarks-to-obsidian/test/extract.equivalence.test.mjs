@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Defuddle } from 'defuddle/node';
-import { extractFromHtml } from '../src/extract.mjs';
+import { extractFromHtml } from '../scripts/src/extract.mjs';
 
 const URL = 'https://example.com/post';
 const DOC = `<!doctype html><html><head><title>Eq Title</title></head><body>

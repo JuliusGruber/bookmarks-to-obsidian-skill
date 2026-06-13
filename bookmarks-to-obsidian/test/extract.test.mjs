@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { extractFromHtml } from '../src/extract.mjs';
+import { extractFromHtml } from '../scripts/src/extract.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixture = (name) => readFile(join(here, 'fixtures', name), 'utf8');
