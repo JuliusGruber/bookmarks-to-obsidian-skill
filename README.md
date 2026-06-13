@@ -23,8 +23,8 @@ skills directory and install its dependencies:
 ```bash
 # Personal skill (all projects). For a project-scoped skill, use
 # <project>/.claude/skills/ instead of ~/.claude/skills/.
-git clone https://github.com/JuliusGruber/bookmarks-to-obsidian.git
-cp -r bookmarks-to-obsidian/bookmarks-to-obsidian ~/.claude/skills/bookmarks-to-obsidian
+git clone https://github.com/JuliusGruber/bookmarks-to-obsidian-skill.git
+cp -r bookmarks-to-obsidian-skill/bookmarks-to-obsidian ~/.claude/skills/bookmarks-to-obsidian
 cd ~/.claude/skills/bookmarks-to-obsidian
 npm install
 ```
