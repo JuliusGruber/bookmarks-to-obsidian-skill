@@ -1,19 +1,32 @@
 # bookmarks-to-obsidian (Claude skill)
 
-Self-contained Claude Code skill that imports Chrome bookmarks into an Obsidian
-vault as Web-Clipper-quality markdown notes. It renders each page in the gateway's
-Chrome (CDP), runs Defuddle in the live DOM, and harvests the images the page
-loaded into the vault — also raw-fetching and keeping the better extraction when a
-render looks thin or like a consent/paywall shell.
+A self-contained Claude Code skill that imports your Chrome bookmarks into an
+Obsidian vault as clean, Web-Clipper-quality markdown notes — full article text
+and images included. You ask Claude in plain language ("import my AI bookmarks")
+and the skill handles the rest, including **starting its own dependency stack**
+(a Dockerized bookmark gateway plus a dedicated Chrome) the first time you use it,
+after a single consent prompt. No manual setup scripts.
 
 The skill is the **[`bookmarks-to-obsidian/`](./bookmarks-to-obsidian)** folder —
-that's the copy-pastable unit you drop into your Claude skills directory (see
-[Install](#install)). Everything else here is repo scaffolding: this README, the
-`LICENSE`, and `docs/` (design notes).
+that's the copy-pastable unit you drop into your Claude skills directory.
+Everything else in this repo is scaffolding (this README, `LICENSE`, `docs/`).
 
-- **Operator guide:** [`bookmarks-to-obsidian/SKILL.md`](./bookmarks-to-obsidian/SKILL.md) — this is what Claude reads.
-- **Engine:** `bookmarks-to-obsidian/import.mjs` + `src/*.mjs` — a deterministic Node CLI (`node import.mjs --help`).
-- **Tests:** `npm test` from inside the skill folder (vitest unit + Defuddle fixture integration).
+## Requirements
+
+The skill brings its own stack up, but four things must exist first. It detects
+each one and tells you what's missing:
+
+- **Node 20+** — to run the skill.
+- **Docker, installed and running** — the gateway runs as a pinned container.
+  (On Apple Silicon the image is amd64-only, so it runs under Docker Desktop's
+  emulation — slower, but functional.)
+- **Chrome or Chromium, installed** — the skill opens a *dedicated, isolated*
+  Chrome window it controls, separate from your everyday browser. Set
+  `CBG_CHROME` / `CHROME_PATH` if it lives in a non-standard location.
+- **A Google account** — you sign into it once in that dedicated window and turn
+  on bookmark sync, so the gateway can read your bookmarks.
+
+Plus an internet connection on the first run to pull the gateway image.
 
 ## Install
 
@@ -21,76 +34,106 @@ The skill is a single folder. Copy `bookmarks-to-obsidian/` into your Claude Cod
 skills directory and install its dependencies:
 
 ```bash
-# Personal skill (all projects). For a project-scoped skill, use
-# <project>/.claude/skills/ instead of ~/.claude/skills/.
 git clone https://github.com/JuliusGruber/bookmarks-to-obsidian-skill.git
 cp -r bookmarks-to-obsidian-skill/bookmarks-to-obsidian ~/.claude/skills/bookmarks-to-obsidian
 cd ~/.claude/skills/bookmarks-to-obsidian
 npm install
 ```
 
-On Windows the skills directory is `C:\Users\<you>\.claude\skills\`. Downloading the
-repo as a ZIP works too — just copy the **inner** `bookmarks-to-obsidian/` folder
-(not the `-main` wrapper GitHub adds), then run `npm install` inside it. Claude
-discovers the skill from the `SKILL.md` frontmatter, so keep the folder named
-`bookmarks-to-obsidian`.
+- **Personal skill (all projects):** use `~/.claude/skills/` as shown. For a
+  **project-scoped** skill, copy into `<project>/.claude/skills/` instead.
+- **Windows:** the skills directory is `C:\Users\<you>\.claude\skills\`.
+- **ZIP download** works too — copy the **inner** `bookmarks-to-obsidian/` folder
+  (not the `-main` wrapper GitHub adds), then run `npm install` inside it.
 
-Requirements: Node 20+ and the local `chrome-bookmarks-gateway` running on
-`http://localhost:3000` (its dedicated Chrome, with CDP on `http://localhost:9222`,
-doubles as the rendering engine). Dependencies pulled by `npm install`: `defuddle`
-(extraction; bundles `linkedom` for node-side parsing), `puppeteer-core` (CDP
-render + image capture, connect-only — no bundled browser), and `image-size`
-(tracking-pixel filtering). `node_modules/` is not committed, so re-run
-`npm install` whenever you copy the folder to a new machine.
+Keep the folder named `bookmarks-to-obsidian` — Claude discovers the skill from
+its `SKILL.md`. `node_modules/` isn't committed, so re-run `npm install` whenever
+you copy the folder to a new machine.
 
-## Design
+## Usage
 
-A run is one deterministic pass: resolve the bookmark folder, decide what's new,
-and turn each new bookmark into a single Web-Clipper-parity note. The central idea
-is **pick-the-better** — every page gets a rendered candidate and (only when that
-render looks thin or like a shell) a raw-fetched candidate; whichever yields the
-longer real article wins, with the render breaking ties.
+Just ask Claude, in natural language:
 
-### Pipeline
+> "import my AI bookmarks"
+> "sync my bookmarks to Obsidian"
+> "pull new bookmarks into the vault"
 
-`import.mjs` is the orchestrator: it parses flags, classifies bookmarks, and runs
-the rest over one bounded worker pool, emitting a JSON report on stdout.
+What happens on a first run:
 
-1. **Health + resolve** — confirm the gateway is up and Chrome is synced, resolve
-   the folder, collect its bookmarks (`gateway.mjs`).
-2. **Classify** — normalize each URL and split bookmarks into already-decided
-   (in the vault or remembered by the manifest) vs. to-process (`dedup.mjs`).
-3. **Render** — open a tab in the gateway's Chrome over CDP, run Defuddle in the
-   live DOM to markdown, and harvest the images the page actually loaded
-   (`render.mjs`).
-4. **Fetch fallback** — when the render is thin or a consent/paywall/JS shell,
-   raw-fetch the HTML and extract with node-side Defuddle (`extract.mjs`,
-   `shell.mjs`).
-5. **Pick the better** — disqualify shell/thin candidates, longest word count
-   wins, render breaks ties.
-6. **Materialize** — rewrite image refs to Obsidian embeds (`images.mjs`), build
-   YAML frontmatter (`frontmatter.mjs`), write a collision-safe note (`note.mjs`).
-7. **Record** — update the manifest and emit a structured report (`report.mjs`).
+1. **Bootstrap.** Claude checks whether the gateway is up. If it isn't, it
+   explains that it will launch a dedicated Chrome, a small local helper, and a
+   Docker container (using local ports `3000`, `9222`, and `9223`), and **asks
+   your permission once**. On yes, it brings the whole stack up automatically.
+2. **Sign in (once).** A dedicated Chrome window opens. Sign into Google there and
+   turn on **sync with bookmarks included**. This is the only manual step — the
+   isolated profile remembers it for next time.
+3. **Pick your vault (once).** Claude asks for your Obsidian vault path and saves
+   it, so you never have to repeat it.
+4. **Dry run.** Claude previews a handful of articles so you can judge quality
+   before anything is written.
+5. **Import.** Claude writes the new notes into a `Clippings/` inbox in your vault
+   (full text plus downloaded images as Obsidian embeds), then summarizes how many
+   were imported, skipped, or failed.
+6. **Follow-ups.** Ask it to retry failures, import the full backlog, or open the
+   inbox.
 
-### Building blocks
+Later runs skip straight to importing — consent, sign-in, and vault are all
+remembered.
 
-Each `src/*.mjs` module owns one concern and is unit-tested in isolation:
+### Running the importer directly (optional)
 
-| Module | Responsibility |
+Once the stack is up, you can drive the engine without Claude. From the skill
+folder:
+
+```bash
+# preview (renders, writes nothing)
+node import.mjs --vault "/path/to/Vault" --folder "Mobile Lesezeichen/AI" --dry-run --limit 10
+
+# real import (writes notes; omit --limit for the full backlog)
+node import.mjs --vault "/path/to/Vault" --folder "Mobile Lesezeichen/AI"
+
+# every flag
+node import.mjs --help
+```
+
+`--folder` is the Chrome bookmark folder to import (use the full path if the name
+is ambiguous). Add `--retry-failed` to re-attempt earlier failures and thin skips.
+
+## Configuration
+
+Your settings live in a config file **outside** the skill folder, so updating or
+re-copying the skill never wipes them:
+
+- **Windows:** `%APPDATA%\bookmarks-to-obsidian\config.json`
+- **macOS / Linux:** `$XDG_CONFIG_HOME/bookmarks-to-obsidian/` or
+  `~/.config/bookmarks-to-obsidian/`
+
+Read or change it with the bundled CLI (run from the skill folder):
+
+```bash
+node src/bootstrap/config.mjs --get                       # show current config
+node src/bootstrap/config.mjs --set vault="/path/to/Vault"
+node src/bootstrap/config.mjs --set folder="Mobile Lesezeichen/AI"
+node src/bootstrap/config.mjs --path                      # print the config file location
+```
+
+Fields: `vault` (your Obsidian vault root), `folder` (bookmark folder to import),
+`inbox` (destination subfolder, default `Clippings`), and `consentedAt` (stamped
+when you grant bootstrap permission).
+
+## Troubleshooting
+
+If a run can't start, the bootstrap reports a status that tells you what to fix:
+
+| Status | What it means / what to do |
 | --- | --- |
-| `gateway.mjs` | Health check, fetch the bookmark tree over JSON-RPC, resolve a folder by name/path, collect its bookmarks. |
-| `dedup.mjs` | URL normalization (strips `utm_*` and tracking params), vault scan (source of truth), and the `.import-state.json` manifest (fast path + provenance). |
-| `render.mjs` | CDP render in the live gateway Chrome; in-page Defuddle → markdown; image-response capture. Connect/disconnect only — never launches a browser. |
-| `extract.mjs` | Raw `fetch` + node-side Defuddle — the fallback extraction path. |
-| `shell.mjs` | Pure detector for consent walls, paywalls, and JS shells (curated EN/DE phrases + a length rule). |
-| `images.mjs` | Rewrite images to `![[embeds]]`, sourcing bytes captured-first, then a hotlink-busting fetch, else leaving them remote so notes never break. |
-| `frontmatter.mjs` | Web-Clipper-parity YAML (author splitting, date normalization). |
-| `note.mjs` | Windows/Obsidian-safe filenames, collision-safe naming, note write. |
-| `report.mjs` | Aggregate per-item outcomes into the JSON summary. |
+| `docker-unavailable` | Docker isn't running — start Docker Desktop and retry. |
+| `chrome-not-found` | No Chrome/Chromium found — install one, or set `CBG_CHROME` to its path. |
+| `not-synced` | The gateway is up but the dedicated Chrome isn't signed in — sign into Google and enable bookmark sync in that window. |
+| `needs-consent` | Permission wasn't recorded yet — approve the one-time prompt, or run `node src/bootstrap/config.mjs --consent`. |
+| `down` | The stack didn't come up — check Docker, and that ports `3000` / `9222` / `9223` are free. |
+| `ready` | Everything's up — imports will run. |
 
-### State
+## License
 
-The **vault is the source of truth**: a note's `source:` frontmatter means
-"already imported". The per-inbox manifest is a fast path plus provenance for
-failures and thin skips, and `--retry-failed` reconsiders those. `--dry-run`
-plans without writing either.
+MIT — see [`LICENSE`](./LICENSE).
