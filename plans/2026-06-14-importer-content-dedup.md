@@ -1317,7 +1317,7 @@ git commit -m "feat(import): three-phase extract/reconcile/write pipeline" -m "P
 **Files:**
 - Modify: `bookmarks-to-obsidian/scripts/import.mjs` — the `report.meta = { ... }` assembly.
 
-- [ ] **Step 1: Add the dedup block to `report.meta`**
+- [x] **Step 1: Add the dedup block to `report.meta`**
 
 Immediately after the `report.meta = { ... };` assignment (before `process.stdout.write(...)`), add:
 
@@ -1333,17 +1333,17 @@ Immediately after the `report.meta = { ... };` assignment (before `process.stdou
 
 (Counts are derived from this run's detections; a *remembered* `skipped-duplicate` has `reason: 'remembered'` and is intentionally not counted here.)
 
-- [ ] **Step 2: Verify the CLI loads**
+- [x] **Step 2: Verify the CLI loads**
 
 Run: `node --check bookmarks-to-obsidian/scripts/import.mjs`
 Expected: no output.
 
-- [ ] **Step 3: Verify the suite is green**
+- [x] **Step 3: Verify the suite is green**
 
 Run: `npm test`
 Expected: PASS.
 
-- [ ] **Step 4: Manual acceptance — live dry-run (requires the gateway up)**
+- [x] **Step 4: Manual acceptance — live dry-run (requires the gateway up)**
 
 This is the only end-to-end check; the gateway/Chrome cannot be unit-tested. If the stack is up (`curl -sS http://localhost:3000/syncz` → `{"ok":true}`), run a dry-run and read `meta.dedup` in the JSON report:
 
@@ -1353,7 +1353,7 @@ node bookmarks-to-obsidian/scripts/import.mjs --vault "<config.vault>" --folder 
 
 Expected: report `summary` includes a `skipped-duplicate` count; `meta.dedup` is present with `enabled: true`, `distance: 6`. If the gateway is down, note this step as **deferred to the user** rather than claiming it passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```sh
 git add bookmarks-to-obsidian/scripts/import.mjs
