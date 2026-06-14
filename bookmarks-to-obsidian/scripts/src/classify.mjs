@@ -66,3 +66,75 @@ export function classifyBookmarks(bookmarks, { vaultSet, manifest, retryFailed =
 
   return { newItems, decided, existingCount: decided.length, declinedCount };
 }
+
+/**
+ * Shape the read-only --list output: { mode, meta, new }. `new` is bookmark-order
+ * and carries only the fields the chat walk needs (id, title, url, domain).
+ */
+export function buildListPayload(classification, { folder, folderSpec, vault, inbox, generatedAt }) {
+  const { newItems, existingCount, declinedCount } = classification;
+  return {
+    mode: 'list',
+    meta: {
+      folder,
+      folderSpec,
+      vault,
+      inbox,
+      counts: { new: newItems.length, existing: existingCount, declined: declinedCount },
+      generatedAt,
+    },
+    new: newItems.map(({ id, title, url, domain }) => ({ id, title, url, domain })),
+  };
+}
+
+/**
+ * Resolve the import/decline id sets for an id-scoped run. Import wins over
+ * decline: an id in both is imported, never declined.
+ */
+export function partitionIds(importIds, declineIds) {
+  const importSet = new Set(importIds || []);
+  const declineSet = new Set();
+  for (const id of declineIds || []) {
+    if (!importSet.has(id)) declineSet.add(id);
+  }
+  return { importSet, declineSet };
+}
+
+/**
+ * Build manifest entries for declined ids. Resolves each id to its bookmark,
+ * normalizes the URL, and stamps a `declined` record. Unknown ids (deleted since
+ * --list) are collected, not fatal.
+ *
+ * Returns { entries: { normUrl: { bookmarkId, status:'declined', at } }, declined, unknownIds }.
+ */
+export function buildDeclineEntries(ids, bookmarks, at) {
+  const byId = new Map(bookmarks.map((b) => [b.id, b]));
+  const entries = {};
+  const unknownIds = [];
+  let declined = 0;
+  for (const id of ids) {
+    const bm = byId.get(id);
+    if (!bm) {
+      unknownIds.push(id);
+      continue;
+    }
+    entries[normalizeUrl(bm.url)] = { bookmarkId: bm.id, status: 'declined', at };
+    declined += 1;
+  }
+  return { entries, declined, unknownIds };
+}
+
+/**
+ * Remove every `declined` entry from a manifest. Mutates it in place and returns
+ * { manifest, cleared } where cleared is the number removed.
+ */
+export function clearDeclined(manifest) {
+  let cleared = 0;
+  for (const [k, v] of Object.entries(manifest)) {
+    if (v && v.status === 'declined') {
+      delete manifest[k];
+      cleared += 1;
+    }
+  }
+  return { manifest, cleared };
+}
