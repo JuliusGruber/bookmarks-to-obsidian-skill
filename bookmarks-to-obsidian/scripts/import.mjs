@@ -40,6 +40,8 @@ Options:
   --limit <N>            Process at most N new bookmarks this run.
   --retry-failed         Re-attempt manifest entries marked failed or skipped-thin.
   --min-words <N>        Word-count floor for the thin-content gate (default: 200).
+  --dup-distance <N>     SimHash Hamming threshold for near-duplicate detection (default: 6).
+  --no-content-dedup     Disable content dedup (URL dedup only; no fingerprinting).
   --concurrency <N>      Parallel fetches (default: 4).
   --no-render            Skip Chrome rendering; use the raw-fetch path only.
   --cdp-url <url>        Chrome CDP endpoint for rendering (default: http://localhost:9222).
@@ -60,6 +62,8 @@ function parseArgs(argv) {
     limit: Infinity,
     retryFailed: false,
     minWords: 200,
+    dupDistance: 6,
+    contentDedup: true,
     concurrency: 4,
     render: true,
     cdpUrl: 'http://localhost:9222',
@@ -80,6 +84,8 @@ function parseArgs(argv) {
       case '--limit': opts.limit = Number(next()); break;
       case '--retry-failed': opts.retryFailed = true; break;
       case '--min-words': opts.minWords = Number(next()); break;
+      case '--dup-distance': opts.dupDistance = Math.max(0, Number(next())); break;
+      case '--no-content-dedup': opts.contentDedup = false; break;
       case '--concurrency': opts.concurrency = Math.max(1, Number(next())); break;
       case '--rpc-url': opts.rpcUrl = next(); break;
       case '--gateway': opts.gateway = next(); break;
