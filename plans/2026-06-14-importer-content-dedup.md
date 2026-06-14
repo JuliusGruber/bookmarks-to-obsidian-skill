@@ -410,7 +410,7 @@ git commit -m "feat(fingerprint): fingerprint() composite helper" -m "One call r
 - Create: `bookmarks-to-obsidian/scripts/src/content-index.mjs`
 - Test: `test/content-index.test.mjs`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `test/content-index.test.mjs`:
 
@@ -490,12 +490,12 @@ function fingerprintFile(file, title, markdown) {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run test/content-index.test.mjs`
 Expected: FAIL — module `content-index.mjs` does not exist.
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Create `bookmarks-to-obsidian/scripts/src/content-index.mjs`:
 
@@ -551,12 +551,12 @@ export function createContentIndex() {
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run test/content-index.test.mjs`
 Expected: PASS (exact / near / flag / unique / empty-title / custom-distance all green).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```sh
 git add bookmarks-to-obsidian/scripts/src/content-index.mjs test/content-index.test.mjs
