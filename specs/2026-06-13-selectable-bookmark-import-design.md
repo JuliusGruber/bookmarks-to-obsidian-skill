@@ -3,6 +3,7 @@
 **Date:** 2026-06-13
 **Skill:** `bookmarks-to-obsidian`
 **Status:** approved (brainstorm), pending implementation plan
+**Revised:** 2026-06-14 — reconciled against the shipped content-dedup importer (see [Interaction with content dedup](#interaction-with-content-dedup)).
 
 ## Problem
 
@@ -55,7 +56,7 @@ Claude (operator)                         import.mjs (deterministic CLI)
 4. walk new[] one-by-one (AskUserQuestion):
      Import / Skip / Stop & finish now
      → keep[] , decline[]
-5. node import.mjs                         render+write keep[]  (existing engine)
+5. node import.mjs                         render→dedup→write keep[]  (existing engine)
      --import-ids <keep>      ───────────▶ record decline[] as `declined`
      --decline-ids <decline>
 6. parse report → prose summary
@@ -64,9 +65,14 @@ Claude (operator)                         import.mjs (deterministic CLI)
 ### Refactor: `classifyBookmarks()`
 
 Extract the existing classification logic (currently inline in `import.mjs`, ~lines
-145–201: resolve folder → `collectBookmarks` → dedup against vault scan + manifest →
+153–209: resolve folder → `collectBookmarks` → `scanVault` URL set + manifest dedup →
 `--limit`) into one reusable function so the definition of "new" lives in exactly one
 place. Both `--list` and the import engine call it.
+
+> Note: this classification dedup is **URL-only**. The separate **content-dedup**
+> layer (`scanVault`'s content index → fingerprint → reconcile) runs later, during
+> render, and is *not* part of "new" — see
+> [Interaction with content dedup](#interaction-with-content-dedup).
 
 Returns, roughly:
 
@@ -120,9 +126,13 @@ JSON, exits. **No rendering, no writes, no manifest mutation.**
 ### `--import-ids <id,…>`
 Run the existing render/fetch/write engine on **only** the bookmarks whose ids are in
 the comma-separated set. Honors existing dedup (an item that became existing in the
-meantime is still skipped). Works with `--dry-run` for a quality preview of the chosen
-ones. Emits the **existing import report unchanged** (same stdout JSON shape as a
-no-flag run today).
+meantime is still skipped) — **including content dedup**: a selected id whose URL was
+new can still settle as `skipped-duplicate` once its content is rendered (see
+[Interaction with content dedup](#interaction-with-content-dedup)). Works with
+`--dry-run` for a quality preview of the chosen ones. Emits the **default import
+report** — the same stdout JSON shape a no-flag run emits, which now also carries the
+`skipped-duplicate` status, the `meta.dedup` block, and `duplicateOf` /
+`possibleDuplicateOf` fields.
 
 ### `--decline-ids <id,…>`
 For each id, resolve the bookmark, normalize its URL, and write
@@ -148,6 +158,30 @@ Manifest (`<inbox>/.import-state.json`) gains one status:
   even if re-bookmarked under a new id.
 - Classification skips `declined` (it is neither `new` nor `existing`; counted as
   `declined`). `--retry-failed` does not un-hide it. Sticky until `--reset-declined`.
+- `declined` sits alongside the statuses content-dedup already added — the manifest
+  also carries `skipped-duplicate` entries (with `duplicateOf`) and fingerprint fields
+  (`titleKey`/`bodyHash`/`simhash`) on `imported` entries. `declined` is orthogonal to
+  all of these.
+
+## Interaction with content dedup
+
+The **content-dedup** feature (separate spec/plan, already shipped) changed the
+importer this design builds on. Two consequences the implementation plan must honor:
+
+1. **Selection is URL-scoped; dedup is content-scoped.** `--list` classifies on
+   title + domain + URL only (an explicit non-goal: no content fetched before
+   deciding). Content dedup runs *after* render, in the three-phase
+   extract → reconcile → write pipeline. So a bookmark the user **keeps** can still
+   land as `skipped-duplicate` (exact body twin or near-duplicate repost) and never be
+   written. A kept id is a request to *try*, not a guarantee of import — the walk copy
+   and the summary must not promise "N imported = N kept."
+
+2. **Where the content index lives.** `scanVault(vault, { content })` returns
+   `{ urls, content }`. `classifyBookmarks()` only needs `urls`, so `--list` should
+   call `scanVault(vault, { content: false })` and skip building the (unused) content
+   index. The import path keeps `{ content: true }` and hands the `contentIndex` to the
+   reconcile phase — i.e. `classifyBookmarks()` owns URL/manifest dedup, while the
+   content index stays a concern of the render engine, not the classifier.
 
 ## Skill workflow (SKILL.md)
 
@@ -172,8 +206,10 @@ Replaces today's dry-run-then-import-all steps with:
    (either list may be empty).
 7. **Summarize** — parse the report and summarize in prose as today (imported N,
    rendered vs. fallback, images, any `failed`/`skipped-thin` to triage) plus
-   "M declined (hidden next time)." Offer `--retry-failed`, open the inbox, or
-   `--reset-declined`.
+   "M declined (hidden next time)." Also surface `meta.dedup`: kept items that
+   collapsed as `skipped-duplicate` (exact/near, with `duplicateOf`) and any imported
+   note flagged with `possibleDuplicateOf` (a title clash with distinct content). Offer
+   `--retry-failed`, open the inbox, or `--reset-declined`.
 
 ## Edge cases & error handling
 
