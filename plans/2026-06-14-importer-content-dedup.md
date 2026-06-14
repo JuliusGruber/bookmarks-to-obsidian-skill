@@ -183,7 +183,7 @@ git commit -m "feat(fingerprint): title key, body normalization, body hash" -m "
 - Modify: `bookmarks-to-obsidian/scripts/src/fingerprint.mjs`
 - Test: `test/fingerprint.test.mjs`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `test/fingerprint.test.mjs` (add the imports to the existing import block and append the new `describe`):
 
@@ -252,12 +252,12 @@ describe('simhash + hamming', () => {
 });
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run test/fingerprint.test.mjs`
 Expected: FAIL — `simhash is not a function` / import resolves but symbol missing.
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Append to `bookmarks-to-obsidian/scripts/src/fingerprint.mjs`:
 
@@ -312,12 +312,12 @@ export function hamming(a, b) {
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run test/fingerprint.test.mjs`
 Expected: PASS. If the near case (`ARTICLE` vs `ARTICLE_REPOST`) reports a distance of 7–8, lengthen the shared body text in both fixtures (more identical sentences) so shared 3-grams dominate, then re-run — do **not** loosen the `<= 6` assertion.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```sh
 git add bookmarks-to-obsidian/scripts/src/fingerprint.mjs test/fingerprint.test.mjs
