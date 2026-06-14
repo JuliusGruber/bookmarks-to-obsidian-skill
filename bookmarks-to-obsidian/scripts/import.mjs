@@ -41,6 +41,10 @@ Options:
   --dry-run              Plan only: fetch/extract nothing is written, no manifest update.
   --limit <N>            Process at most N new bookmarks this run.
   --retry-failed         Re-attempt manifest entries marked failed or skipped-thin.
+  --list                 Classify only: print { new[], counts } as JSON, then exit (read-only).
+  --import-ids <id,…>    Import only the bookmarks whose ids are in this comma-separated set.
+  --decline-ids <id,…>   Record these bookmark ids as declined (hidden from future syncs).
+  --reset-declined       Remove every declined manifest entry, report the count, and exit.
   --min-words <N>        Word-count floor for the thin-content gate (default: 200).
   --dup-distance <N>     SimHash Hamming threshold for near-duplicate detection (default: 6).
   --no-content-dedup     Disable content dedup (URL dedup only; no fingerprinting).
@@ -63,6 +67,10 @@ function parseArgs(argv) {
     dryRun: false,
     limit: Infinity,
     retryFailed: false,
+    list: false,
+    importIds: null,
+    declineIds: null,
+    resetDeclined: false,
     minWords: 200,
     dupDistance: 6,
     contentDedup: true,
@@ -85,6 +93,10 @@ function parseArgs(argv) {
       case '--dry-run': opts.dryRun = true; break;
       case '--limit': opts.limit = Number(next()); break;
       case '--retry-failed': opts.retryFailed = true; break;
+      case '--list': opts.list = true; break;
+      case '--import-ids': opts.importIds = parseIdList(next()); break;
+      case '--decline-ids': opts.declineIds = parseIdList(next()); break;
+      case '--reset-declined': opts.resetDeclined = true; break;
       case '--min-words': opts.minWords = Number(next()); break;
       case '--dup-distance': opts.dupDistance = Math.max(0, Number(next())); break;
       case '--no-content-dedup': opts.contentDedup = false; break;
@@ -101,6 +113,10 @@ function parseArgs(argv) {
     }
   }
   return opts;
+}
+
+function parseIdList(s) {
+  return String(s ?? '').split(',').map((x) => x.trim()).filter(Boolean);
 }
 
 function todayISO() {
