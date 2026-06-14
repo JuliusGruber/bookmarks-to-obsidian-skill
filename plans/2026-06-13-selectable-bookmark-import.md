@@ -719,7 +719,7 @@ git commit -m "feat(import): --list emits new[] + counts as JSON (read-only)" -m
 
 This is one atomic refactor: the default path is rebuilt on `classifyBookmarks` (behavior-identical to today) and the id-scoped `--import-ids`/`--decline-ids` path is added in the same region. It must land together or `import.mjs` will not run. The render/reconcile/write region (Phase A/6b/Phase B) is unchanged — it still consumes `within` and writes into `outcomes[slot]`.
 
-- [ ] **Step 1: Replace the classify + limit region**
+- [x] **Step 1: Replace the classify + limit region**
 
 Replace this entire block (the step-4 loop through the end of the step-5 limit block):
 
@@ -823,7 +823,7 @@ with:
   }
 ```
 
-- [ ] **Step 2: Build the report from the dense (non-empty) slots**
+- [x] **Step 2: Build the report from the dense (non-empty) slots**
 
 The report assembly currently reads:
 
@@ -837,7 +837,7 @@ Change it to drop the sparse holes left by the id-scoped mode (a no-op for a def
   const report = buildReport(outcomes.filter(Boolean));
 ```
 
-- [ ] **Step 3: Add `declined` and `notes` to `report.meta`**
+- [x] **Step 3: Add `declined` and `notes` to `report.meta`**
 
 Immediately after the `report.meta.dedup = { ... };` block (before `process.stdout.write(...)`), add:
 
@@ -846,7 +846,7 @@ Immediately after the `report.meta.dedup = { ... };` block (before `process.stdo
   report.meta.notes = notes;
 ```
 
-- [ ] **Step 4: Verify the CLI loads**
+- [x] **Step 4: Verify the CLI loads**
 
 Run: `node --check bookmarks-to-obsidian/scripts/import.mjs`
 Expected: no output.
@@ -854,7 +854,7 @@ Expected: no output.
 Run: `node bookmarks-to-obsidian/scripts/import.mjs --help`
 Expected: usage prints, no runtime error.
 
-- [ ] **Step 5: Verify the suite is green**
+- [x] **Step 5: Verify the suite is green**
 
 Run: `npm test`
 Expected: PASS — the pure core (`classifyBookmarks` + helpers) is unit-tested; `report.mjs`/`reconcile.mjs`/`dedup.mjs` are unchanged.
@@ -875,7 +875,16 @@ Only runnable with the stack up (`curl -sS http://localhost:3000/syncz` → `{"o
    Expected: the report covers only `idA` (imported/skipped-*), `meta.declined: 1`, and `idB` is now hidden — a follow-up `--list` shows it under `meta.counts.declined`, not `new[]`. (`--dry-run` here previews without persisting; drop it for a real decline.)
 3. **Unknown id** — pass a bogus `--import-ids 999999`; expect `meta.notes` to contain `import: unknown id 999999 (skipped)` and no crash.
 
-- [ ] **Step 7: Commit**
+> **Deferred to the user (2026-06-14).** The gateway process was reachable but the
+> Chrome profile was **not synced** (`GET /syncz` → 503 `{"ok":false}`, stable across
+> repeated polls), so the live import path refuses to run. All three live checks
+> above are deferred until Chrome sync is re-established. Everything verifiable
+> offline is green: `node --check`, `--help` (shows all four flags), and the full
+> 150-test suite. The id-scoped path is thin orchestration over the fully
+> unit-tested pure core (`classifyBookmarks`/`partitionIds`/`buildDeclineEntries`),
+> so confidence is high pending the live confirmation.
+
+- [x] **Step 7: Commit**
 
 ```sh
 git add bookmarks-to-obsidian/scripts/import.mjs
