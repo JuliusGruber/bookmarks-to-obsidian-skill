@@ -54,7 +54,7 @@ This builds on the three-phase `extract → reconcile → write` importer (`spec
 - Create: `bookmarks-to-obsidian/scripts/src/classify.mjs`
 - Test: `test/classify.test.mjs`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `test/classify.test.mjs`:
 
@@ -171,12 +171,12 @@ describe('classifyBookmarks', () => {
 });
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run test/classify.test.mjs`
 Expected: FAIL — `Failed to resolve import` (module `classify.mjs` does not exist).
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Create `bookmarks-to-obsidian/scripts/src/classify.mjs`:
 
@@ -251,12 +251,12 @@ export function classifyBookmarks(bookmarks, { vaultSet, manifest, retryFailed =
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run test/classify.test.mjs`
 Expected: PASS (new/vault/declined/retry/remembered/within-run-dup/order all green).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```sh
 git add bookmarks-to-obsidian/scripts/src/classify.mjs test/classify.test.mjs
