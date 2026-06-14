@@ -1,6 +1,8 @@
 // Dedup layer: URL normalization, vault source scan, and the import manifest.
 import { readFile, writeFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { createContentIndex } from './content-index.mjs';
+import { fingerprint } from './fingerprint.mjs';
 
 // Tracking params we strip so the same article reached via different shares dedupes.
 const TRACKING_PARAMS = new Set([
@@ -50,9 +52,15 @@ export function normalizeUrl(raw) {
 
 const SKIP_DIRS = new Set(['.git', '.obsidian', 'node_modules', '.trash']);
 
-/** Walk every .md in the vault and collect the normalized `source:` URLs. */
-export async function scanVaultSources(vaultPath) {
-  const set = new Set();
+/**
+ * Walk every .md in the vault. Always collect normalized `source:` URLs. When
+ * `content` is true (default) also fingerprint each note's title+body into a
+ * content index — the live scan is the source of truth: it sees hand-added and
+ * moved notes the manifest never recorded. Returns { urls:Set, content:contentIndex }.
+ */
+export async function scanVault(vaultPath, { content: buildContent = true } = {}) {
+  const urls = new Set();
+  const content = createContentIndex();
   async function walk(dir) {
     let entries;
     try {
@@ -64,29 +72,53 @@ export async function scanVaultSources(vaultPath) {
       const full = join(dir, e.name);
       if (e.isDirectory()) {
         if (!SKIP_DIRS.has(e.name)) await walk(full);
-      } else if (e.isFile() && e.name.toLowerCase().endsWith('.md')) {
-        const src = await readSourceField(full);
-        if (src) set.add(normalizeUrl(src));
+        continue;
       }
+      if (!(e.isFile() && e.name.toLowerCase().endsWith('.md'))) continue;
+
+      if (!buildContent) {
+        const src = await readSourceField(full);
+        if (src) urls.add(normalizeUrl(src));
+        continue;
+      }
+      const fields = await readNoteFields(full);
+      if (!fields) continue;
+      if (fields.source) urls.add(normalizeUrl(fields.source));
+      const base = e.name.replace(/\.md$/i, '');
+      const fp = fingerprint(fields.title || base, fields.body);
+      content.add({ file: e.name, titleKey: fp.titleKey, bodyHash: fp.bodyHash, simhash: fp.simhash });
     }
   }
   await walk(vaultPath);
-  return set;
+  return { urls, content };
 }
 
+/** Read just the frontmatter `source:` (used on the no-content-dedup fast path). */
 async function readSourceField(file) {
+  const fields = await readNoteFields(file);
+  return fields ? fields.source : null;
+}
+
+/** Parse a note's frontmatter `source:`/`title:` and the body after it. */
+async function readNoteFields(file) {
   let text;
   try {
     text = await readFile(file, 'utf8');
   } catch {
     return null;
   }
-  if (!text.startsWith('---')) return null;
+  if (!text.startsWith('---')) return { source: null, title: null, body: text };
   const end = text.indexOf('\n---', 3);
-  if (end === -1) return null;
+  if (end === -1) return { source: null, title: null, body: text };
   const fm = text.slice(3, end);
-  const m = fm.match(/^source:\s*["']?([^"'\n]+)["']?\s*$/m);
-  return m ? m[1].trim() : null;
+  const sm = fm.match(/^source:\s*["']?([^"'\n]+)["']?\s*$/m);
+  const tm = fm.match(/^title:\s*["']?(.*?)["']?\s*$/m);
+  const nl = text.indexOf('\n', end + 1); // newline ending the closing '---' line
+  return {
+    source: sm ? sm[1].trim() : null,
+    title: tm ? tm[1].trim() : null,
+    body: nl === -1 ? '' : text.slice(nl + 1),
+  };
 }
 
 /** Read the import manifest ({ normalizedUrl: { ... } }); missing/corrupt -> {}. */
