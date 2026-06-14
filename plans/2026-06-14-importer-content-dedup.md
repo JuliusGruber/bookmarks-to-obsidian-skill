@@ -1415,22 +1415,22 @@ git commit -m "docs(skill): document skipped-duplicate, dedup flags, and summary
 
 **Files:** none (verification only)
 
-- [ ] **Step 1: Run the whole suite**
+- [x] **Step 1: Run the whole suite**
 
 Run: `npm test`
 Expected: PASS — all of `fingerprint`, `content-index`, `reconcile`, `dedup.scan`, `report`, plus the pre-existing suite (`url`, `note`, `extract`, `images`, `frontmatter`, `gateway`, `shell`, bootstrap, render) green.
 
-- [ ] **Step 2: Syntax-check the CLI entry point**
+- [x] **Step 2: Syntax-check the CLI entry point**
 
 Run: `node --check bookmarks-to-obsidian/scripts/import.mjs`
 Expected: no output.
 
-- [ ] **Step 3: Confirm no dev artifacts leaked into the skill folder**
+- [x] **Step 3: Confirm no dev artifacts leaked into the skill folder**
 
 Run: `git status`
 Expected: only the intended runtime files under `bookmarks-to-obsidian/scripts/src/` and `SKILL.md` changed there; all tests live under root `test/`; the skill's `package.json` is untouched (no devDependencies added). The new modules introduce **no** new runtime dependencies.
 
-- [ ] **Step 4: Spec coverage spot-check**
+- [x] **Step 4: Spec coverage spot-check**
 
 Confirm against `specs/2026-06-14-importer-content-dedup-design.md`: `fingerprint.mjs` (titleKey/normalizeBody/bodyHash/simhash/hamming/fingerprint) ✓; content index (byHash/byTitle, exact/near/flag/unique) ✓; serial slot-ordered reconcile ✓; `scanVault` content index ✓; `skipped-duplicate` status + `duplicateOf` + `possibleDuplicateOf` ✓; manifest fingerprint fields + remembered replay ✓; `meta.dedup` ✓; `--dup-distance` / `--no-content-dedup` ✓; SKILL.md docs ✓; dry-run writes nothing ✓ (Phase B guards on `opts.dryRun`).
 
