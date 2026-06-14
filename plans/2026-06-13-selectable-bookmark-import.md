@@ -859,7 +859,7 @@ Expected: usage prints, no runtime error.
 Run: `npm test`
 Expected: PASS — the pure core (`classifyBookmarks` + helpers) is unit-tested; `report.mjs`/`reconcile.mjs`/`dedup.mjs` are unchanged.
 
-- [ ] **Step 6: Manual acceptance — live runs (require the gateway up)**
+- [x] **Step 6: Manual acceptance — live runs (require the gateway up)**
 
 Only runnable with the stack up (`curl -sS http://localhost:3000/syncz` → `{"ok":true}`). If down, record as **deferred to the user**.
 
@@ -875,14 +875,26 @@ Only runnable with the stack up (`curl -sS http://localhost:3000/syncz` → `{"o
    Expected: the report covers only `idA` (imported/skipped-*), `meta.declined: 1`, and `idB` is now hidden — a follow-up `--list` shows it under `meta.counts.declined`, not `new[]`. (`--dry-run` here previews without persisting; drop it for a real decline.)
 3. **Unknown id** — pass a bogus `--import-ids 999999`; expect `meta.notes` to contain `import: unknown id 999999 (skipped)` and no crash.
 
-> **Deferred to the user (2026-06-14).** The gateway process was reachable but the
-> Chrome profile was **not synced** (`GET /syncz` → 503 `{"ok":false}`, stable across
-> repeated polls), so the live import path refuses to run. All three live checks
-> above are deferred until Chrome sync is re-established. Everything verifiable
-> offline is green: `node --check`, `--help` (shows all four flags), and the full
-> 150-test suite. The id-scoped path is thin orchestration over the fully
-> unit-tested pure core (`classifyBookmarks`/`partitionIds`/`buildDeclineEntries`),
-> so confidence is high pending the live confirmation.
+> **Verified live 2026-06-14** (after `node scripts/bootstrap.mjs` re-established
+> Chrome sync; `/syncz` stable `{"ok":true}`). Vault `C:\Users\juliu\Documents\AIEngineeringArticles`,
+> folder `Mobile Lesezeichen/AI` (`new: 0, existing: 232` — so id-scoped checks used
+> real existing ids, all under `--dry-run` so the manifest was never mutated; a
+> post-run `--list` confirmed `declined: 0` unchanged).
+> 1. **Default dry-run** (`--dry-run --limit 5`): `summary` = total 232 / imported 0 /
+>    skipped-existing 212 / skipped-thin 17 / skipped-binary 1 / failed 2 (sums to 232 —
+>    full classification, behavior-identical), `meta.dryRun: true`, `meta.declined: 0`,
+>    `meta.notes: []`. ✔
+> 2. **Id-scoped** (`--import-ids 1269 --decline-ids 1270 --dry-run`): report covered
+>    **only** id 1269 (echoed at its slot as its remembered `skipped-thin` status — an
+>    already-decided kept id stays skipped, no re-render), `meta.declined: 1` (for 1270),
+>    `meta.notes: []`. ✔
+> 3. **Unknown id** (`--import-ids 999999 --dry-run`): no items, no crash,
+>    `meta.notes: ["import: unknown id 999999 (skipped)"]`, `meta.declined: 0`. ✔
+>
+> Note: with `new: 0`, no genuinely-new id was available, so the live decline+hide
+> *persistence* (real, non-dry-run) and the render path were not exercised end-to-end
+> live — those remain covered by the unit suite (`buildDeclineEntries`/`clearDeclined`/
+> reconcile) and the offline `node --check`/`--help`/150-test green.
 
 - [x] **Step 7: Commit**
 
