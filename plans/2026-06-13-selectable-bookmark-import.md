@@ -1014,12 +1014,12 @@ git commit -m "docs(skill): list -> walk -> import selection workflow" -m "Repla
 
 **Files:** none (verification only)
 
-- [ ] **Step 1: Run the whole suite**
+- [x] **Step 1: Run the whole suite**
 
 Run: `npm test`
 Expected: PASS — `classify` + `classify.helpers` plus the pre-existing suite (`fingerprint`, `content-index`, `reconcile`, `dedup.scan`, `report`, `url`, `note`, `extract`, `images`, `frontmatter`, `gateway`, `shell`, bootstrap, render) all green.
 
-- [ ] **Step 2: Syntax-check the CLI entry point**
+- [x] **Step 2: Syntax-check the CLI entry point**
 
 Run: `node --check bookmarks-to-obsidian/scripts/import.mjs`
 Expected: no output.
@@ -1027,12 +1027,12 @@ Expected: no output.
 Run: `node bookmarks-to-obsidian/scripts/import.mjs --help`
 Expected: usage prints with `--list`, `--import-ids`, `--decline-ids`, `--reset-declined`.
 
-- [ ] **Step 3: Confirm no dev artifacts leaked into the skill folder**
+- [x] **Step 3: Confirm no dev artifacts leaked into the skill folder**
 
 Run: `git status`
 Expected: under `bookmarks-to-obsidian/` only `scripts/src/classify.mjs`, `scripts/import.mjs`, and `SKILL.md` changed; both new tests live under root `test/`; the skill's `package.json` is untouched (no devDependencies, no new runtime dependency — `classify.mjs` imports only `./dedup.mjs` and `node:url`).
 
-- [ ] **Step 4: Spec coverage spot-check**
+- [x] **Step 4: Spec coverage spot-check**
 
 Confirm against `specs/2026-06-13-selectable-bookmark-import-design.md`:
 - `classifyBookmarks()` single definition of "new"; `declined` excluded + counted, sticky under `--retry-failed`; `failed`/`skipped-thin` rejoin under `--retry-failed` — Tasks 1, 6.
@@ -1045,11 +1045,21 @@ Confirm against `specs/2026-06-13-selectable-bookmark-import-design.md`:
 - Edge cases: deleted id → note (Task 6); overlapping keep/decline → import wins (Tasks 2, 6); decline-only → no browser/mkdir (Task 6, `within` empty); reset no-op (Task 4); `--list` + `--dry-run` harmless (Task 5, read-only).
 - SKILL.md workflow, flags, kept-≠-imported summary, `--reset-declined` offer — Task 7.
 
-- [ ] **Step 5: Commit (only if Step 4 surfaced a fix; otherwise nothing to commit)**
+- [x] **Step 5: Commit (only if Step 4 surfaced a fix; otherwise nothing to commit)**
 
 ```sh
 git status   # if clean, this task is verification-only and needs no commit
 ```
+
+> Verified 2026-06-14. Suite 150 passed / 2 skipped; `node --check` clean; `--help`
+> shows all four flags. Whole-feature diff under `bookmarks-to-obsidian/` is exactly
+> `SKILL.md` + `scripts/import.mjs` + `scripts/src/classify.mjs`; tests are the two
+> new files under root `test/`; the skill `package.json` is untouched and
+> `classify.mjs` adds no runtime dependency (imports only `./dedup.mjs`). Spec
+> spot-check: every Decisions row, CLI-surface flag, data-model `declined` entry,
+> content-dedup interaction (§1/§2), and edge case maps to shipped code. No fix
+> surfaced → verification-only, no code commit. (Task 6 Step 6 live gateway
+> acceptance remains deferred — Chrome sync was down.)
 
 ---
 
