@@ -14,8 +14,10 @@ engine + technique), **harvests the images the page already loaded**, and writes
 Web-Clipper-quality notes into a vault inbox. For each page it renders *and*, when
 the render looks thin or like a cookie/paywall shell, also raw-fetches and keeps
 the better of the two — so it never does worse than before. The work is a
-deterministic Node CLI; this skill is the thin operator that health-checks, runs
-it, and summarizes the JSON report.
+deterministic Node CLI; this skill is the thin operator that health-checks it,
+lists the genuinely-new bookmarks, walks them with you one-by-one (keep/skip),
+imports the ones you keep, and summarizes the JSON report. A "just import
+everything" bulk escape remains for when you don't want to choose.
 
 ## When to use
 
@@ -108,24 +110,45 @@ validate it — the directory **must exist** (reject and re-ask if not); a missi
           manual step); re-check `/syncz` after they confirm.
         - `down` → the stack did not come up; surface the JSON and stop.
         - `ready` → proceed.
-2. **First run / when unsure → dry-run first** so the user can eyeball quality.
-   Read `vault`/`folder` from config (`--get`) and pass them as flags:
+2. **List the new bookmarks.** Read `vault`/`folder` from config (`--get`) and classify:
    ```
-   node scripts/import.mjs --vault "<config.vault>" --folder "<config.folder, default Mobile Lesezeichen/AI>" --dry-run --limit 10
+   node scripts/import.mjs --list --vault "<config.vault>" --folder "<config.folder, default Mobile Lesezeichen/AI>"
    ```
-3. **Real import** (writes notes) — drop `--dry-run`; omit `--limit` for the full backfill:
+   Parse the JSON: `meta.counts` (`new` / `existing` / `declined`) and `new[]`
+   (each `{ id, title, url, domain }`, in bookmark order). `--list` is read-only —
+   no notes, no manifest writes.
+3. **Nothing new?** If `new` is empty, tell the user "No new bookmarks" (and
+   mention `meta.counts.declined` if it is > 0), then stop.
+4. **Announce the count and offer a cap.** Say "N new bookmarks." Then one
+   `AskUserQuestion`:
+   - **Walk all N** → step 5 over every id.
+   - **Walk the first 20** (or another cap) → step 5 over the first cap ids; the
+     rest stay new for next time.
+   - **Just import all N** → skip the walk; every id goes into the keep set; go to
+     step 6.
+5. **Walk one bookmark at a time.** For each new bookmark up to the cap, one
+   `AskUserQuestion` showing `Title — domain — full URL` with three options:
+   - **Import** → add the id to the keep set.
+   - **Skip** → add the id to the decline set.
+   - **Stop & finish now** → end the walk immediately; import the keep set so far.
+     Undecided bookmarks are left untouched — they reappear next sync and are
+     **not** declined.
+6. **Execute the selection** in one call (either list may be empty):
    ```
-   node scripts/import.mjs --vault "<config.vault>" --folder "<config.folder>"
+   node scripts/import.mjs --import-ids <keep,csv> --decline-ids <skip,csv> --vault "<config.vault>" --folder "<config.folder>"
    ```
-4. **Parse** the JSON report on stdout and **summarize** in prose: imported N →
-   inbox, plus skipped/failed counts. List the `skipped-thin` and `failed` items
-   for manual triage. Never paste the raw JSON at the user.
-   Also surface `meta.dedup`: e.g. "3 collapsed as duplicates — 2 exact, 1 near —
-   and 1 flagged for review". List any items carrying `possibleDuplicateOf` (a
-   title clash with distinct content, imported with a ` (2)` filename) so the user
-   can eyeball them.
-5. **Offer next**: `--retry-failed` (re-attempts `failed` + `skipped-thin`), open
-   the inbox, or clip a thin one manually in Safari/Web Clipper.
+   Add `--dry-run` first if the user wants a quality preview of the kept ones.
+7. **Summarize the report** in prose (never paste raw JSON):
+   - Imported N → inbox, with `meta.render` (rendered vs. fetch-fallback, images
+     saved vs. left remote).
+   - **Kept ≠ imported:** a kept bookmark can still settle as `skipped-duplicate`
+     because content dedup runs *after* render. Surface `meta.dedup` (exact/near,
+     each with `duplicateOf`) and any imported note carrying `possibleDuplicateOf`.
+   - `failed` / `skipped-thin` items to triage.
+   - **`meta.declined`** — "M declined (hidden next time)." Any `meta.notes`
+     (e.g. an id deleted between list and import) are surfaced here too.
+   - Offer next: `--retry-failed`, open the inbox, or `--reset-declined` to
+     un-hide every declined bookmark.
 
 ## Report statuses
 
@@ -150,7 +173,12 @@ downloaded vs. left remote — surface this in your summary (e.g. "42 imported
 `--vault`, `--folder`, `--inbox`, `--dry-run`, `--limit N`, `--retry-failed`,
 `--min-words N`, `--concurrency N`, `--rpc-url`, `--gateway`, `--no-render`,
 `--cdp-url`, `--render-concurrency N`, `--no-dismiss-consent`, `--dup-distance N`,
-`--no-content-dedup`. Run the CLI with `--help` for the full list.
+`--no-content-dedup`, `--list`, `--import-ids <ids>`, `--decline-ids <ids>`,
+`--reset-declined`. Run the CLI with `--help` for the full list.
+`--list` classifies and prints `{ new[], counts }` without writing anything;
+`--import-ids`/`--decline-ids` act on a comma-separated id set from a prior
+`--list` (import wins if an id appears in both); `--reset-declined` clears every
+declined entry so those bookmarks reappear as new.
 `--dup-distance N` tunes the near-duplicate SimHash threshold (default 6);
 `--no-content-dedup` turns the content layer off, leaving URL dedup only.
 
@@ -158,5 +186,5 @@ downloaded vs. left remote — surface this in your summary (e.g. "42 imported
 
 - Running with the gateway down → the CLI exits 2 with `{"error":"gateway-unreachable"|"gateway-not-synced"}`. Bring the stack up first via Workflow step 1 (`node scripts/bootstrap.mjs`); don't fabricate results.
 - A bare `--folder "AI"` is **ambiguous** (an AI folder exists on the bar *and* under Mobile bookmarks) — the CLI errors with both paths. Use the full path `Mobile Lesezeichen/AI`.
-- A real import mutates the vault. For an unfamiliar vault state, dry-run first (step 2) before writing.
+- A real import mutates the vault. For an unfamiliar vault state, add `--dry-run` to the import (step 6) for a quality preview before writing.
 - Transient `failed` (e.g. HTTP 429) is normal for rate-limited hosts; re-run later with `--retry-failed`.
