@@ -1105,7 +1105,7 @@ git commit -m "refactor(import): wire scanVault and seed the content index" -m "
 
 This is one atomic refactor: it must land together or `import.mjs` will not run. Show all the code below.
 
-- [ ] **Step 1: Add the fingerprint + reconcile imports**
+- [x] **Step 1: Add the fingerprint + reconcile imports**
 
 After the `import { downloadImages } ...` / `import { looksLikeShell } ...` lines, add:
 
@@ -1114,7 +1114,7 @@ import { fingerprint } from './src/fingerprint.mjs';
 import { reconcile } from './src/reconcile.mjs';
 ```
 
-- [ ] **Step 2: Replace the step-6 region**
+- [x] **Step 2: Replace the step-6 region**
 
 Replace the entire block that starts at the comment `// 6. Render → pick-the-better-vs-fetch → harvest images → write.` and ends at the closing `});` of that `await mapPool(within, poolSize, async ({ bm, norm, slot }) => { ... });` call with the following three stages:
 
@@ -1290,7 +1290,7 @@ Replace the entire block that starts at the comment `// 6. Render → pick-the-b
   });
 ```
 
-- [ ] **Step 3: Verify the CLI loads**
+- [x] **Step 3: Verify the CLI loads**
 
 Run: `node --check bookmarks-to-obsidian/scripts/import.mjs`
 Expected: no output (syntax OK).
@@ -1298,12 +1298,12 @@ Expected: no output (syntax OK).
 Run: `node bookmarks-to-obsidian/scripts/import.mjs --help`
 Expected: usage prints, no runtime error.
 
-- [ ] **Step 4: Verify the full suite is green**
+- [x] **Step 4: Verify the full suite is green**
 
 Run: `npm test`
 Expected: PASS — the pure modules backing this refactor (`fingerprint`, `content-index`, `reconcile`, `dedup`) are all covered.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```sh
 git add bookmarks-to-obsidian/scripts/import.mjs
