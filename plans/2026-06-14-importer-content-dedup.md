@@ -332,7 +332,7 @@ git commit -m "feat(fingerprint): 64-bit SimHash and Hamming distance" -m "SimHa
 - Modify: `bookmarks-to-obsidian/scripts/src/fingerprint.mjs`
 - Test: `test/fingerprint.test.mjs`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `test/fingerprint.test.mjs` (add `fingerprint` to the import block, then append):
 
@@ -364,12 +364,12 @@ describe('fingerprint', () => {
 });
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run test/fingerprint.test.mjs`
 Expected: FAIL — `fingerprint is not a function`.
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Append to `bookmarks-to-obsidian/scripts/src/fingerprint.mjs`:
 
@@ -390,12 +390,12 @@ export function fingerprint(title, markdown) {
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run test/fingerprint.test.mjs`
 Expected: PASS (whole file green).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```sh
 git add bookmarks-to-obsidian/scripts/src/fingerprint.mjs test/fingerprint.test.mjs
