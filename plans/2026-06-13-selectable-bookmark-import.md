@@ -632,7 +632,7 @@ git commit -m "feat(import): --reset-declined clears declined manifest entries" 
 **Files:**
 - Modify: `bookmarks-to-obsidian/scripts/import.mjs` — insert a `--list` short-circuit after the folder resolves (after the step-2 `try/catch`, before `// 3. Dedup state:`).
 
-- [ ] **Step 1: Insert the list short-circuit**
+- [x] **Step 1: Insert the list short-circuit**
 
 The step-2 folder resolution ends with its `catch` block, immediately followed by the step-3 comment:
 
@@ -673,7 +673,7 @@ Insert the list mode between them, so it reads:
 
 (`vaultAbs`, `manifestPath`, and `created` are computed earlier in `main()`; `scanVault`, `readManifest`, `classifyBookmarks`, and `buildListPayload` are all imported.)
 
-- [ ] **Step 2: Verify the CLI loads**
+- [x] **Step 2: Verify the CLI loads**
 
 Run: `node --check bookmarks-to-obsidian/scripts/import.mjs`
 Expected: no output.
@@ -681,12 +681,12 @@ Expected: no output.
 Run: `node bookmarks-to-obsidian/scripts/import.mjs --help`
 Expected: usage prints, no runtime error.
 
-- [ ] **Step 3: Verify the suite is still green**
+- [x] **Step 3: Verify the suite is still green**
 
 Run: `npm test`
 Expected: PASS.
 
-- [ ] **Step 4: Manual acceptance — live `--list` (requires the gateway up)**
+- [x] **Step 4: Manual acceptance — live `--list` (requires the gateway up)**
 
 `--list` needs the bookmark tree, so it can only run end-to-end with the stack up. If `curl -sS http://localhost:3000/syncz` returns `{"ok":true}`, run:
 
@@ -696,7 +696,14 @@ node bookmarks-to-obsidian/scripts/import.mjs --list --vault "<config.vault>" --
 
 Expected: JSON with `"mode": "list"`, `meta.counts` `{ new, existing, declined }`, and a `new[]` array of `{ id, title, url, domain }` in bookmark order. **No** notes written and **no** manifest mutation (re-run and confirm `meta.counts` is unchanged). If the gateway is down, record this step as **deferred to the user** rather than claiming it passed.
 
-- [ ] **Step 5: Commit**
+> Verified 2026-06-14 with the gateway up (`/syncz` → `{"ok":true}`). `--list` over
+> the live vault returned `mode: "list"`, `meta.counts: { new: 0, existing: 232,
+> declined: 0 }`, an empty `new[]`, and the manifest SHA-256 was identical before/after
+> (read-only confirmed). `new[]` was empty (nothing new in the vault), so a populated
+> element's `{id,title,url,domain}` shape was not observed live — that shape is covered
+> by the `buildListPayload` unit test.
+
+- [x] **Step 5: Commit**
 
 ```sh
 git add bookmarks-to-obsidian/scripts/import.mjs
