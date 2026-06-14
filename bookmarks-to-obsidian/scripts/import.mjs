@@ -17,7 +17,6 @@ import { fetchPage, extractFromHtml } from './src/extract.mjs';
 import { splitAuthors, normalizeDate, buildFrontmatter } from './src/frontmatter.mjs';
 import { writeNoteFile } from './src/note.mjs';
 import {
-  normalizeUrl,
   scanVault,
   readManifest,
   writeManifest,
@@ -227,39 +226,63 @@ async function main() {
     /* inbox not created yet */
   }
 
-  // 4. Classify each bookmark into already-decided vs. to-process.
-  const outcomes = []; // final report items, in bookmark order
-  const toProcess = []; // { bm, norm, slot } slot = index into outcomes
-  const seen = new Set();
-  for (const bm of bookmarks) {
-    const norm = normalizeUrl(bm.url);
-    const slot = outcomes.length;
-    if (seen.has(norm)) {
-      outcomes.push({ url: bm.url, title: bm.title, status: 'skipped-existing', reason: 'duplicate in run' });
-      continue;
-    }
-    seen.add(norm);
-    if (vaultSet.has(norm)) {
-      outcomes.push({ url: bm.url, title: bm.title, status: 'skipped-existing', reason: 'already in vault' });
-      continue;
-    }
-    const m = manifest[norm];
-    const retryable = m && (m.status === 'failed' || m.status === 'skipped-thin');
-    if (m && !(opts.retryFailed && retryable)) {
-      const status = m.status === 'imported' ? 'skipped-existing' : m.status;
-      outcomes.push({ url: bm.url, title: bm.title, status, reason: 'remembered', file: m.file, duplicateOf: m.duplicateOf });
-      continue;
-    }
-    outcomes.push({ url: bm.url, title: bm.title, status: 'pending' });
-    toProcess.push({ bm, norm, slot });
-  }
+  // 4. Classify into new vs already-decided — the single definition of "new".
+  const { newItems, decided } = classifyBookmarks(bookmarks, {
+    vaultSet,
+    manifest,
+    retryFailed: opts.retryFailed,
+  });
 
-  // 5. Apply --limit; anything beyond it is reported, never silently dropped.
-  // Dry-run renders for an honest preview; without an explicit --limit, cap it.
-  const effectiveLimit = (opts.dryRun && !Number.isFinite(opts.limit)) ? 10 : opts.limit;
-  const within = toProcess.slice(0, effectiveLimit);
-  for (const { bm, slot } of toProcess.slice(effectiveLimit)) {
-    outcomes[slot] = { url: bm.url, title: bm.title, status: 'skipped-limit', reason: `beyond --limit ${effectiveLimit}` };
+  // 5. Populate the report slots (bookmark order, sparse) and the work list.
+  //    Two modes:
+  //      - id-scoped (--import-ids/--decline-ids): exactly the kept ids; record declines.
+  //      - default: all new, capped by --limit (the "import everything" escape).
+  const outcomes = new Array(bookmarks.length); // sparse; filtered before report
+  const idScoped = opts.importIds !== null || opts.declineIds !== null;
+  let within = []; // [{ bm, norm, slot }] to render this run
+  let declinedThisRun = 0;
+  const notes = [];
+
+  if (idScoped) {
+    const { importSet, declineSet } = partitionIds(opts.importIds, opts.declineIds);
+
+    // Kept ids that turned out to be already-decided (e.g. now in the vault) are
+    // echoed at their slot; an item that became existing in the meantime stays skipped.
+    for (const d of decided) {
+      if (importSet.has(d.id)) {
+        outcomes[d.slot] = { url: d.url, title: d.title, status: d.status, reason: d.reason, file: d.file, duplicateOf: d.duplicateOf };
+      }
+    }
+    // Kept ids that are genuinely new → render them.
+    for (const it of newItems) {
+      if (!importSet.has(it.id)) continue;
+      outcomes[it.slot] = { url: it.url, title: it.title, status: 'pending' };
+      within.push({ bm: { id: it.id, title: it.title, url: it.url }, norm: it.norm, slot: it.slot });
+    }
+    // Kept ids that no longer exist (deleted since --list) → a note, no crash.
+    const known = new Set(bookmarks.map((b) => b.id));
+    for (const id of importSet) if (!known.has(id)) notes.push(`import: unknown id ${id} (skipped)`);
+
+    // Declines: pure manifest writes, no render.
+    const { entries, declined, unknownIds } = buildDeclineEntries([...declineSet], bookmarks, created);
+    for (const [norm, rec] of Object.entries(entries)) manifest[norm] = rec;
+    declinedThisRun = declined;
+    for (const id of unknownIds) notes.push(`decline: unknown id ${id} (skipped)`);
+  } else {
+    for (const d of decided) {
+      outcomes[d.slot] = { url: d.url, title: d.title, status: d.status, reason: d.reason, file: d.file, duplicateOf: d.duplicateOf };
+    }
+    const toProcess = [];
+    for (const it of newItems) {
+      outcomes[it.slot] = { url: it.url, title: it.title, status: 'pending' };
+      toProcess.push({ bm: { id: it.id, title: it.title, url: it.url }, norm: it.norm, slot: it.slot });
+    }
+    // --limit: dry-run renders for an honest preview; without an explicit --limit, cap it.
+    const effectiveLimit = (opts.dryRun && !Number.isFinite(opts.limit)) ? 10 : opts.limit;
+    within = toProcess.slice(0, effectiveLimit);
+    for (const { bm, slot } of toProcess.slice(effectiveLimit)) {
+      outcomes[slot] = { url: bm.url, title: bm.title, status: 'skipped-limit', reason: `beyond --limit ${effectiveLimit}` };
+    }
   }
 
   if (!opts.dryRun && within.length) await mkdir(inboxAbs, { recursive: true });
@@ -456,7 +479,7 @@ async function main() {
   // 7. Persist manifest (real runs only) and emit the report.
   if (!opts.dryRun) await writeManifest(manifestPath, manifest);
 
-  const report = buildReport(outcomes);
+  const report = buildReport(outcomes.filter(Boolean));
   report.meta = {
     folder: folderName,
     folderSpec: opts.folder,
@@ -483,6 +506,8 @@ async function main() {
     skippedNear: outcomes.filter((o) => o && o.status === 'skipped-duplicate' && /^near-duplicate/.test(o.reason || '')).length,
     flagged: outcomes.filter((o) => o && o.status === 'imported' && o.possibleDuplicateOf).length,
   };
+  report.meta.declined = declinedThisRun;
+  report.meta.notes = notes;
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
 }
 
