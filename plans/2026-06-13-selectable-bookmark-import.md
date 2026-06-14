@@ -898,7 +898,7 @@ git commit -m "feat(import): id-scoped import/decline mode on a shared classifie
 **Files:**
 - Modify: `bookmarks-to-obsidian/SKILL.md` — Overview (last lines), Workflow (steps 2–5 → 2–7), Flags.
 
-- [ ] **Step 1: Update the Overview's closing sentences**
+- [x] **Step 1: Update the Overview's closing sentences**
 
 In the **Overview** section, replace the final sentence:
 
@@ -918,7 +918,7 @@ imports the ones you keep, and summarizes the JSON report. A "just import
 everything" bulk escape remains for when you don't want to choose.
 ```
 
-- [ ] **Step 2: Replace Workflow steps 2–5 with the selection flow**
+- [x] **Step 2: Replace Workflow steps 2–5 with the selection flow**
 
 The current Workflow keeps step 1 (health-check/bootstrap) and then has steps 2–5 (dry-run, real import, parse, offer next). Replace everything from step **2** through step **5** (i.e. from `2. **First run / when unsure → dry-run first**` down to the end of step 5, just before `## Report statuses`) with:
 
@@ -964,7 +964,7 @@ The current Workflow keeps step 1 (health-check/bootstrap) and then has steps 2�
      un-hide every declined bookmark.
 ````
 
-- [ ] **Step 3: Document the new flags**
+- [x] **Step 3: Document the new flags**
 
 In the **Flags** section, replace the flag inventory line so it includes the new flags. Change:
 
@@ -989,19 +989,24 @@ to:
 declined entry so those bookmarks reappear as new.
 ```
 
-- [ ] **Step 4: Verify the skill still reads correctly and ships clean**
+- [x] **Step 4: Verify the skill still reads correctly and ships clean**
 
 Run: `npx vitest run` (sanity — a docs change must not affect tests)
 Expected: PASS.
 
 Visually confirm `bookmarks-to-obsidian/SKILL.md`: the Workflow renumbers 1–7 with no orphaned references to the old dry-run-then-import-all steps, the Flags paragraph lists the four new flags, and the Overview mentions the walk.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```sh
 git add bookmarks-to-obsidian/SKILL.md
 git commit -m "docs(skill): list -> walk -> import selection workflow" -m "Replaces dry-run-then-import-all with --list, an up-front count + cap, a one-by-one keep/skip walk (Import / Skip / Stop & finish now), and a single --import-ids/--decline-ids call. Documents kept != imported (content dedup), meta.declined, and --reset-declined; adds the four new flags."
 ```
+
+> Done 2026-06-14 (commit `319b4ea`). Overview now mentions the list→walk→import
+> flow + bulk escape; Workflow renumbers 1–7 with no orphaned step references
+> (the Common-mistakes "dry-run first" note was repointed from the old step 2 to
+> step 6); Flags lists all four new flags. Suite stayed green (150 passed, 2 skipped).
 
 ---
 
