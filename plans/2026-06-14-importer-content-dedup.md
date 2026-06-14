@@ -739,7 +739,7 @@ git commit -m "feat(reconcile): serial slot-ordered dup decision" -m "Pure funct
 - Modify: `bookmarks-to-obsidian/scripts/src/report.mjs:3-9`
 - Test: `test/report.test.mjs` (update existing expectations)
 
-- [ ] **Step 1: Update the failing test**
+- [x] **Step 1: Update the failing test**
 
 In `test/report.test.mjs`, the two exhaustive `toEqual` summaries must include the new bucket. Replace the first test's body so it exercises the bucket:
 
@@ -782,12 +782,12 @@ Then add `'skipped-duplicate': 0` to the second test's expected summary:
     });
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run test/report.test.mjs`
 Expected: FAIL — summaries differ; `skipped-duplicate` missing from `buildReport` output.
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 In `bookmarks-to-obsidian/scripts/src/report.mjs`, add the status to `STATUSES`:
 
@@ -802,12 +802,12 @@ export const STATUSES = [
 ];
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run test/report.test.mjs`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```sh
 git add bookmarks-to-obsidian/scripts/src/report.mjs test/report.test.mjs
