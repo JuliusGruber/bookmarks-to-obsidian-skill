@@ -571,7 +571,7 @@ git commit -m "feat(content-index): exact/near/flag/unique classifier" -m "byHas
 - Create: `bookmarks-to-obsidian/scripts/src/reconcile.mjs`
 - Test: `test/reconcile.test.mjs`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `test/reconcile.test.mjs`:
 
@@ -661,12 +661,12 @@ describe('reconcile', () => {
 });
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run test/reconcile.test.mjs`
 Expected: FAIL — module `reconcile.mjs` does not exist.
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Create `bookmarks-to-obsidian/scripts/src/reconcile.mjs`:
 
@@ -719,12 +719,12 @@ export function reconcile(candidates, contentIndex, { distance = 6, existingName
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run test/reconcile.test.mjs`
 Expected: PASS (cluster, slot-order, flag pair, dedup-off, taken-names all green).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```sh
 git add bookmarks-to-obsidian/scripts/src/reconcile.mjs test/reconcile.test.mjs
