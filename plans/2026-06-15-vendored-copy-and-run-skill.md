@@ -60,7 +60,7 @@ The spec's prose ("Why vendoring is safe here", change #1, change #5) is now fac
 **Files:**
 - Modify: `.gitignore` (line 1)
 
-- [ ] **Step 1: Anchor the `node_modules` ignore to the repo root**
+- [x] **Step 1: Anchor the `node_modules` ignore to the repo root**
 
 The current `.gitignore` line 1 is `node_modules/`, which ignores `node_modules` at *every* depth — including the skill's. Change only that line to anchor at the repo root. Final file:
 
@@ -75,7 +75,7 @@ dist/
 
 (Edit: replace the first line `node_modules/` with `/node_modules/`. Leave every other line unchanged.)
 
-- [ ] **Step 2: Verify the root harness stays ignored**
+- [x] **Step 2: Verify the root harness stays ignored**
 
 Run:
 ```powershell
@@ -83,7 +83,7 @@ git check-ignore -v node_modules/
 ```
 Expected: one line showing the match, e.g. `.gitignore:1:/node_modules/	node_modules/` (root tree still ignored).
 
-- [ ] **Step 3: Verify the skill's tree is no longer ignored**
+- [x] **Step 3: Verify the skill's tree is no longer ignored**
 
 Run:
 ```powershell
@@ -92,7 +92,7 @@ echo "exit=$LASTEXITCODE"
 ```
 Expected: **no match line printed**, and `exit=1` (`git check-ignore` exits 1 when the path is *not* ignored). This confirms `bookmarks-to-obsidian/node_modules/` is now trackable.
 
-- [ ] **Step 4: Commit (only `.gitignore` — do NOT stage node_modules yet; it is still the stale tree)**
+- [x] **Step 4: Commit (only `.gitignore` — do NOT stage node_modules yet; it is still the stale tree)**
 
 ```powershell
 git add .gitignore
@@ -108,7 +108,7 @@ git commit -m "build(gitignore): anchor node_modules ignore to repo root" -m "Ch
 - Create: `scripts/smoke-extract.mjs`
 - Create (committed): `bookmarks-to-obsidian/node_modules/` — runtime-only tree
 
-- [ ] **Step 1: Add the `vendor` script to the root `package.json`**
+- [x] **Step 1: Add the `vendor` script to the root `package.json`**
 
 Edit the root `package.json` `scripts` block to add `vendor` (leave `test`/`test:watch` as-is). The `scripts` block becomes:
 
@@ -122,7 +122,7 @@ Edit the root `package.json` `scripts` block to add `vendor` (leave `test`/`test
 
 `cd … && …` works identically in both cmd (Windows npm scripts) and POSIX sh. `npm ci` wipes and recreates `node_modules` from the skill's `package-lock.json`; `--omit=dev` drops the dev toolchain but **keeps optional deps** (linkedom/turndown — see the deviation note).
 
-- [ ] **Step 2: Create the offline real-extraction smoke tool**
+- [x] **Step 2: Create the offline real-extraction smoke tool**
 
 Create `scripts/smoke-extract.mjs`:
 
@@ -167,7 +167,7 @@ if (r.status !== 'ok' || !r.content) {
 console.log(`SMOKE OK: status=ok wordCount=${r.wordCount} contentChars=${r.content.length}`);
 ```
 
-- [ ] **Step 3: Vendor the runtime-only tree (replaces the stale local tree)**
+- [x] **Step 3: Vendor the runtime-only tree (replaces the stale local tree)**
 
 Run from the repo root:
 ```powershell
@@ -175,7 +175,7 @@ npm run vendor
 ```
 Expected: npm removes the existing `bookmarks-to-obsidian/node_modules`, then installs from the skill's lockfile. Output ends with something like `added NNN packages, and audited NNN packages in …`. (`npm run` executes the script string directly; it does **not** require the root harness to be installed first.)
 
-- [ ] **Step 4: Verify the tree is pure-JS and contains the right packages**
+- [x] **Step 4: Verify the tree is pure-JS and contains the right packages**
 
 Run:
 ```powershell
@@ -199,7 +199,7 @@ rollup_GONE=True
 ```
 `native_node_files=0` confirms cross-platform safety; `linkedom`/`turndown`/`domino` present confirms the deviation fix; `vitest`/`@rollup` gone confirms the stale pollution was cleared.
 
-- [ ] **Step 5: Offline resolution smoke — `--help` loads every runtime dep**
+- [x] **Step 5: Offline resolution smoke — `--help` loads every runtime dep**
 
 Run:
 ```powershell
@@ -207,7 +207,7 @@ node bookmarks-to-obsidian/scripts/import.mjs --help
 ```
 Expected: prints the usage text beginning `bookmarks-to-obsidian — import Chrome bookmarks into an Obsidian vault.` and exits 0. (Proves `puppeteer-core`, `defuddle/node`, `image-size` all resolve from the vendored tree.)
 
-- [ ] **Step 6: Offline runtime smoke — real extraction works (the critical check)**
+- [x] **Step 6: Offline runtime smoke — real extraction works (the critical check)**
 
 Run:
 ```powershell
@@ -215,7 +215,7 @@ node scripts/smoke-extract.mjs bookmarks-to-obsidian
 ```
 Expected: a single line `SMOKE OK: status=ok wordCount=… contentChars=…`, exit 0. This proves `linkedom` + `turndown` are present and functional in the vendored tree — the failure mode `--omit=optional` would have introduced.
 
-- [ ] **Step 7: Commit the vendored tree + the smoke tool + the script**
+- [x] **Step 7: Commit the vendored tree + the smoke tool + the script**
 
 This stages thousands of files under `bookmarks-to-obsidian/node_modules/` — expected and intentional.
 ```powershell
@@ -223,7 +223,7 @@ git add bookmarks-to-obsidian/node_modules scripts/smoke-extract.mjs package.jso
 git commit -m "feat(skill): vendor runtime node_modules for copy-and-run" -m "Commit bookmarks-to-obsidian/node_modules/ as a runtime-only tree (npm ci --omit=dev from the skill's lockfile) so the copied folder runs with no npm install. Add an npm run vendor script and scripts/smoke-extract.mjs, an offline real-extraction check." -m "Uses --omit=dev only (NOT --omit=optional): defuddle/node loads linkedom and turndown from optionalDependencies at runtime, so omitting optionals would pass --help but break real extraction. The tree is pure JS (no install-script packages), so it is cross-platform."
 ```
 
-- [ ] **Step 8: Confirm the commit recorded the tree**
+- [x] **Step 8: Confirm the commit recorded the tree**
 
 Run:
 ```powershell
@@ -240,7 +240,7 @@ Expected: a number in the thousands (e.g. `tracked_node_modules_files=8000+`), c
 - Modify: `package-lock.json` (root) — generated by `npm install`
 - Create: `scripts/package-skill.mjs`
 
-- [ ] **Step 1: Add `archiver` and the `package` script to the root `package.json`**
+- [x] **Step 1: Add `archiver` and the `package` script to the root `package.json`**
 
 Update the root `package.json`: add the `package` script and an `archiver` devDependency. After this edit the relevant blocks read:
 
@@ -260,7 +260,7 @@ Update the root `package.json`: add the `package` script and an `archiver` devDe
 
 (`archiver` is a streaming zip library; it is a **dev-only** dependency of the repo harness and never ships inside the skill.)
 
-- [ ] **Step 2: Create the packaging script**
+- [x] **Step 2: Create the packaging script**
 
 Create `scripts/package-skill.mjs`:
 
@@ -354,7 +354,7 @@ main().catch((err) => {
 });
 ```
 
-- [ ] **Step 3: Install the dev harness (pulls in `archiver`)**
+- [x] **Step 3: Install the dev harness (pulls in `archiver`)**
 
 Run from the repo root:
 ```powershell
@@ -362,7 +362,7 @@ npm install
 ```
 Expected: completes without error; `archiver` is added under root `node_modules/` and `package-lock.json` is updated.
 
-- [ ] **Step 4: Guard — confirm the root install did NOT disturb the vendored tree**
+- [x] **Step 4: Guard — confirm the root install did NOT disturb the vendored tree**
 
 Run:
 ```powershell
@@ -371,7 +371,7 @@ echo "lines_above_should_be_zero"
 ```
 Expected: **no output** before the echo line. The root `file:` dependency symlinks the skill folder and hoists its deps into the *root* `node_modules/`; it must not modify the committed `bookmarks-to-obsidian/node_modules/`. If anything prints, stop and investigate before continuing.
 
-- [ ] **Step 5: Build the `.skill` archive**
+- [x] **Step 5: Build the `.skill` archive**
 
 Run:
 ```powershell
@@ -379,7 +379,7 @@ npm run package
 ```
 Expected: prints `Packaged NNNN files -> dist\bookmarks-to-obsidian.skill` (NNNN in the thousands). `dist/` is gitignored.
 
-- [ ] **Step 6: Verify the archive is copy-and-run (includes node_modules, runs offline)**
+- [x] **Step 6: Verify the archive is copy-and-run (includes node_modules, runs offline)**
 
 Run:
 ```powershell
@@ -398,7 +398,7 @@ Expected:
 
 (`ZipFile::ExtractToDirectory` is used instead of `Expand-Archive` because the latter rejects the non-`.zip` extension.)
 
-- [ ] **Step 7: Commit the packager**
+- [x] **Step 7: Commit the packager**
 
 ```powershell
 git add scripts/package-skill.mjs package.json package-lock.json
@@ -412,7 +412,7 @@ git commit -m "build(package): add .skill packager that bundles node_modules" -m
 **Files:**
 - Modify: `README.md` (Install section ~lines 33–52; "Building a distributable `.skill`" section ~lines 154–174)
 
-- [ ] **Step 1: Replace the Install section with the no-install version**
+- [x] **Step 1: Replace the Install section with the no-install version**
 
 Replace the entire current Install block (from the `## Install` heading through the paragraph ending `…whenever you copy the folder to a new machine.`) with:
 
@@ -440,7 +440,7 @@ its `SKILL.md`. The folder is copy-and-run: its `node_modules/` ships with it, s
 moving it to a new machine needs no `npm install`.
 ````
 
-- [ ] **Step 2: Rewrite the "Building a distributable `.skill`" section**
+- [x] **Step 2: Rewrite the "Building a distributable `.skill`" section**
 
 Replace the entire current "### Building a distributable `.skill`" section (from that heading through the paragraph ending `…same runtime-only install as under [Install](#install).)`) with:
 
@@ -479,7 +479,7 @@ JavaScript (no package compiles native code), so a tree vendored on one OS runs 
 every OS.
 ````
 
-- [ ] **Step 3: Verify no stale `npm install` instructions remain in Install**
+- [x] **Step 3: Verify no stale `npm install` instructions remain in Install**
 
 Run:
 ```powershell
@@ -487,7 +487,7 @@ Select-String -Path README.md -Pattern "re-run `npm install`","isn't committed" 
 ```
 Expected: **no matches** (the old "node_modules/ isn't committed, so re-run npm install" note is gone). The `npm install` under the **Development** section is expected to remain — that is the root harness, not the install step.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```powershell
 git add README.md
@@ -501,7 +501,7 @@ git commit -m "docs(readme): install is copy-and-run; document new .skill packag
 **Files:**
 - Modify: `CLAUDE.md` (the "## Tests live at the repo root, outside the skill folder" section)
 
-- [ ] **Step 1: Replace the closing paragraph of the "Tests live at the repo root" section**
+- [x] **Step 1: Replace the closing paragraph of the "Tests live at the repo root" section**
 
 In `CLAUDE.md`, the three bullet points (test suite in `test/`, skill `package.json` runtime-only, root `package.json` is the harness) stay **unchanged** — they are still accurate. Replace only the final paragraph of that section:
 
@@ -533,7 +533,7 @@ Keep `--omit=dev` **only** — not `--omit=optional`: `defuddle/node` loads
 optionals would pass `--help` but break real extraction.
 ````
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```powershell
 git add CLAUDE.md
@@ -546,7 +546,7 @@ git commit -m "docs(claude): skill now ships vendored node_modules" -m "Revise t
 
 No code changes expected. If any check fails, fix the cause and re-run that check.
 
-- [ ] **Step 1: Root dev harness still passes**
+- [x] **Step 1: Root dev harness still passes**
 
 Run:
 ```powershell
@@ -555,7 +555,7 @@ npm test
 ```
 Expected: `npm test` runs the vitest suite from `test/` against `bookmarks-to-obsidian/scripts/src` and reports all tests passing (no failures).
 
-- [ ] **Step 2: Pollution guard — the test run did not alter the vendored tree**
+- [x] **Step 2: Pollution guard — the test run did not alter the vendored tree**
 
 Run:
 ```powershell
@@ -564,7 +564,7 @@ echo "lines_above_should_be_zero"
 ```
 Expected: no output before the echo line. (Confirms the root harness and test run leave the committed vendored tree untouched.)
 
-- [ ] **Step 3: Fresh-copy acceptance — copy the folder, run with no install, offline**
+- [x] **Step 3: Fresh-copy acceptance — copy the folder, run with no install, offline**
 
 This is the real acceptance test: a clean copy of just the skill folder, no `npm install`, no network dependency (both commands below make zero network calls).
 ```powershell
@@ -578,7 +578,7 @@ Expected:
 - `--help` prints the usage text (exit 0) — all deps resolve from the copied tree.
 - `SMOKE OK: status=ok wordCount=… contentChars=…` — real extraction (linkedom + turndown) works from the copied tree.
 
-- [ ] **Step 4: Cross-platform spot check — no native binaries vendored**
+- [x] **Step 4: Cross-platform spot check — no native binaries vendored**
 
 Run:
 ```powershell
@@ -586,13 +586,13 @@ Run:
 ```
 Expected: `native_node_files=0`. Because the tree is pure JS, a Windows-vendored tree runs unchanged on macOS/Linux.
 
-- [ ] **Step 5: Clean up temp artifacts (optional)**
+- [x] **Step 5: Clean up temp artifacts (optional)**
 
 ```powershell
 Remove-Item -Recurse -Force (Join-Path $env:TEMP 'b2o-freshcopy'),(Join-Path $env:TEMP 'b2o-skill-extract') -ErrorAction SilentlyContinue
 ```
 
-- [ ] **Step 6: Push**
+- [x] **Step 6: Push**
 
 ```powershell
 git push origin main
