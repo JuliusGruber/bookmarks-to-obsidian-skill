@@ -42,9 +42,12 @@ that folder shippable, **dev artifacts must not live inside it**:
 - The **skill's own `package.json`** declares **runtime dependencies only** (no
   `devDependencies`, no test scripts).
 - The **root `package.json`** is the dev/test harness: it depends on `vitest` and
-  on the skill folder itself via a `file:` dependency, so the skill's runtime
-  deps resolve during tests from a single source of truth. Run `npm install` then
-  `npm test` at the repo root.
+  packaging tools only. Tests import runtime code and vendored modules directly
+  from the skill folder, keeping the skill's lockfile and committed
+  `node_modules/` as the single source of truth. Do not add a `file:` dependency
+  on the skill folder: root `npm install` can prune the committed vendored tree
+  while cleaning that linked package. Run `npm install` then `npm test` at the
+  repo root.
 
 The skill **ships its vendored `node_modules/`**: the committed
 `bookmarks-to-obsidian/node_modules/` is a runtime-only tree (`npm ci --omit=dev`

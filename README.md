@@ -143,11 +143,14 @@ self-contained [`bookmarks-to-obsidian/`](./bookmarks-to-obsidian) folder, whose
 `package.json` declares **runtime dependencies only**. The **test suite lives in
 [`test/`](./test) at the repo root, deliberately *outside* the skill folder**, so
 it never ships to users. The outer `package.json` is the dev/test harness: it
-pulls in `vitest` plus the skill's runtime deps (via a `file:` dependency on the
-skill folder, so there's a single source of truth for versions).
+pulls in `vitest` and packaging tools only. Tests import runtime code and the
+vendored Defuddle module directly from the skill folder, so the skill's lockfile
+and committed `node_modules/` remain the single source of truth. A `file:`
+dependency is intentionally avoided because root `npm install` can prune the
+skill's committed dependency tree while cleaning the linked package.
 
 ```bash
-npm install   # at the repo root — vitest + the skill's runtime deps
+npm install   # at the repo root — vitest + packaging tools
 npm test      # runs the suite against bookmarks-to-obsidian/scripts/src
 ```
 
@@ -180,7 +183,7 @@ git add bookmarks-to-obsidian/node_modules
 
 Use `--omit=dev` only — **not** `--omit=optional`. `defuddle/node` loads
 `linkedom` and `turndown` from `optionalDependencies` at runtime, so omitting
-optionals would break CLI startup and real extraction. The tree is pure
+optionals would pass `--help` but break real extraction. The tree is pure
 JavaScript (no package compiles native code), so a tree vendored on one OS runs
 on every OS.
 

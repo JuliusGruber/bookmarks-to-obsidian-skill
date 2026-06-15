@@ -14,7 +14,6 @@
   },
   "devDependencies": {
     "vitest": "^2.1.0",
-    "archiver": "^7.0.1",
-    "defuddle": "^0.18.1"
+    "archiver": "^7.0.1"
   }
 }

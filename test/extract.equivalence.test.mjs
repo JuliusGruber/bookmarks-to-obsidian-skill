@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Defuddle } from 'defuddle/node';
+import { Defuddle } from '../bookmarks-to-obsidian/node_modules/defuddle/dist/node.js';
 import { extractFromHtml } from '../bookmarks-to-obsidian/scripts/src/extract.mjs';
 
 const URL = 'https://example.com/post';
