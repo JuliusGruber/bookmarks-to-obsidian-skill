@@ -1,6 +1,9 @@
 /node_modules/
 *.log
 
+# IDE config
+.idea/
+
 # Build output: packaged .skill artifacts
 dist/
 *.skill
