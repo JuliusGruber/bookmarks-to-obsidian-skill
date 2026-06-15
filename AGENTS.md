@@ -46,8 +46,24 @@ that folder shippable, **dev artifacts must not live inside it**:
   deps resolve during tests from a single source of truth. Run `npm install` then
   `npm test` at the repo root.
 
-When packaging a `.skill`, only the `bookmarks-to-obsidian/` folder ships;
-`node_modules/` is excluded and the root harness stays behind.
+The skill **ships its vendored `node_modules/`**: the committed
+`bookmarks-to-obsidian/node_modules/` is a runtime-only tree (`npm ci --omit=dev`
+from the skill's lockfile) so the copied folder runs with **no `npm install`**.
+Both distribution routes are copy-and-run — the repo's own packager
+(`npm run package`) includes `node_modules/` in the `.skill` archive (the official
+`skill-creator` packager strips it). The tree is pure JavaScript (nothing compiles
+native code), so it is cross-platform. The root harness still stays behind.
+
+Re-vendor after a dependency bump (keeps the committed tree correct):
+
+```
+npm run vendor                            # (cd bookmarks-to-obsidian && npm ci --omit=dev)
+git add bookmarks-to-obsidian/node_modules
+```
+
+Keep `--omit=dev` **only** — not `--omit=optional`: `defuddle/node` loads
+`linkedom` and `turndown` from `optionalDependencies` at runtime, so omitting
+optionals would pass `--help` but break real extraction.
 
 ## Git workflow — commit directly to `main`
 
